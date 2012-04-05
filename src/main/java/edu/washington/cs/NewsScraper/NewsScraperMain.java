@@ -29,6 +29,10 @@ public class NewsScraperMain
 
 	private static void readLocalFiles() {
 		File f = new File("4-5-0145");
+		String[] fileNames = f.list();
+		for(int i = 0; i < fileNames.length; i++){
+			
+		}
 	}
 
 	private static void fetchYahooRSS() throws IOException {
