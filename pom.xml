@@ -34,11 +34,14 @@
 	  <version>1.6.2</version>
 	</dependency>
 	<dependency>
-	    <groupId>edu.washington.cs</groupId>
-	    <artifactId>NewsScraper</artifactId>
-	    <version>2.1</version>
-	    <scope>system</scope>
-	    <systemPath>${project.basedir}/lib/google-gson-stream-2.1.jar</systemPath>
+		<groupId>com.google.code.gson</groupId>
+		<artifactId>gson</artifactId>
+		<version>2.1</version>
 	</dependency>
+	<dependency>
+		<groupId>org.apache.commons</groupId>
+		<artifactId>commons-lang3</artifactId>
+		<version>3.1</version>
+		</dependency>
   </dependencies>
 </project>
