@@ -20,42 +20,50 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import com.google.gson.Gson;
-
-
-public class NewsScraperMain 
-{
-    public static void main( String[] args ) throws IOException
-    {
-//    	fetchYahooRSS();
+public class NewsScraperMain {
+	
+	private static String date;
+	
+    public static void main( String[] args ) throws IOException{
+    	
+    	getDate();
+    	
+    	fetchYahooRSS();
 //    	readLocalFiles();
 //    	String url = "http://www.cnn.com/2012/04/04/showbiz/whitney-houston-toxicology/index.html?eref=rss_topstories&utm_source=feedburner&utm_medium=feed&utm_campaign=Feed%3A+rss%2Fcnn_topstories+%28RSS%3A+Top+Stories%29";
 //        Document doc = Jsoup.connect(url).get();
 //        Elements content = doc.select("p.cnn_storypgraph2");
 //        System.out.println(content.text());
-    	count();
+//    	count();
     	
     }
     
-    @SuppressWarnings("null")
-	private static void count() throws IOException{
-    	
-    	Map<String, String> titleToContent = new HashMap<String, String>();
-    	File f = new File("exp");
-    	String[] files = f.list();
-    	for(int i = 0; i < files.length; i++){
-    		
-    		processHTML("exp/" + files[i], titleToContent);
-    	}
-    	
+    private static void getDate() {
+		DateFormat dateFormat = new SimpleDateFormat("MM_dd_yyyy");
+		date = dateFormat.format(new Date());
+			
+	}
 
-		Gson gson = new Gson();
-		FileWriter fstream = new FileWriter("business.out");
-		BufferedWriter out = new BufferedWriter(fstream);
-        out.write(gson.toJson(titleToContent));
-//        System.out.println();
-        out.close();
-    }
+	@SuppressWarnings("null")
+//	private static void count() throws IOException{
+//    	
+//    	Map<String, String> titleToContent = new HashMap<String, String>();
+//    	File f = new File("exp");
+//    	String[] files = f.list();
+//    	for(int i = 0; i < files.length; i++){
+//    		
+//    		processHTML("exp/" + files[i], titleToContent);
+//    	}
+//    	
+//
+////		Gson gson = new Gson();
+//    	JSONObject
+//		FileWriter fstream = new FileWriter("business.out");
+//		BufferedWriter out = new BufferedWriter(fstream);
+//        out.write(gson.toJson(titleToContent));
+////        System.out.println();
+//        out.close();
+//    }
     
     private static void processHTML(String string, Map<String, String> titleToContent) throws IOException {
     	String input = readFile(string);
@@ -137,33 +145,43 @@ public class NewsScraperMain
 	}
 
 	private static void fetchYahooRSS() throws IOException {
-		String baseURL = "http://news.yahoo.com/rss/";
-		String rssList[] = new String[]{"us", "business", "education", "stock-markets", 
-										"entertainment", "sports", "tech", "science", 
-										"health", "politics", "internet", "gaming", 
-										"movies", "tv", "economy", "crime-trials"};
-//		String rssList[] = new String[]{"us"};
-		int length = rssList.length;
 		
-		DateFormat dateFormat = new SimpleDateFormat("MM-dd_HH");
-		Date date = new Date();
-		String hour = dateFormat.format(date);
-		//make a folder with current time
-		File newFolder = new File(hour);
-		newFolder.mkdir();
+		YahooRssScraper yrs = new YahooRssScraper(date);
+		yrs.scrape();
 		
-		for(int i = 0; i < length; i++){
-	        Document doc = Jsoup.connect(baseURL + rssList[i]).get();
-	        
-	        
-	        FileWriter fstream = new FileWriter(hour + "/" + rssList[i] + "_" + ".html");
-//	        FileWriter fstream = new FileWriter("1.html");
-	        BufferedWriter out = new BufferedWriter(fstream);
-	        out.write(doc.toString());
-	        System.out.println(rssList[i] + " done!");
-//	        System.out.println();
-	        out.close();
+		try{
+			
+		}catch (Exception e){
+			
 		}
+		
+//		String baseURL = "http://news.yahoo.com/rss/";
+//		String rssList[] = new String[]{"us", "business", "education", "stock-markets", 
+//										"entertainment", "sports", "tech", "science", 
+//										"health", "politics", "internet", "gaming", 
+//										"movies", "tv", "economy", "crime-trials"};
+////		String rssList[] = new String[]{"us"};
+//		int length = rssList.length;
+//		
+//		DateFormat dateFormat = new SimpleDateFormat("MM-dd_HH");
+//		Date date = new Date();
+//		String hour = dateFormat.format(date);
+//		//make a folder with current time
+//		File newFolder = new File(hour);
+//		newFolder.mkdir();
+//		
+//		for(int i = 0; i < length; i++){
+//	        Document doc = Jsoup.connect(baseURL + rssList[i]).get();
+//	        
+//	        
+//	        FileWriter fstream = new FileWriter(hour + "/" + rssList[i] + "_" + ".html");
+////	        FileWriter fstream = new FileWriter("1.html");
+//	        BufferedWriter out = new BufferedWriter(fstream);
+//	        out.write(doc.toString());
+//	        System.out.println(rssList[i] + " done!");
+////	        System.out.println();
+//	        out.close();
+//		}
 	}
    
 }
