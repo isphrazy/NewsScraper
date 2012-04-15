@@ -1,4 +1,11 @@
+quick use:
+
+without any argument: fetch the data online, then process the data and store to database
+-s: fetch the data only
+-d [directory of xml file want to process], not fetch any data online, but process the files in the given directory
+
 YahooRssConfig file contains the configruation info about parsing the Yahoo RSS.
+
 Some rss are abandoned: 
 	"Dear Abby" seems not very useful, 
 	"all politics" in POLITICS category is the same as "politics" in US category, "all politics" from POLITICS is picked

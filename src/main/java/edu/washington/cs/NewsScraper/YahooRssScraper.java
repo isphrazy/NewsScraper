@@ -41,6 +41,7 @@ public class YahooRssScraper {
 	private final String JSON_FOLDER_NAME = "folder-name";
 	private final String JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT = "sentence-minimum-length";
 	private final String ID_COUNT_FILE_NAME = "idCount";
+	private final String OUTPUT_DATABASE_NAME = "yahoo_rss.data";
 	
 	private JsonObject configJO;
 	private Calendar calendar;
@@ -71,16 +72,20 @@ public class YahooRssScraper {
 	 * 
 	 * @param processData if this is true, the data fetched online will be processed and stored
 	 * to database, otherwise only the fetched data will be saved
+	 * @param dir tells where the html will be scraped is stored; if it's null, use today's directory
 	 */
-	public void scrape(boolean processData){
+	public void scrape(boolean processData, String dir){
 		
 		loadConfig();
 
-		fetchData();
+		if(dir == null)
+			fetchData();
 		
 		if(processData){
-			processHtml(rawDataDir);
-//			processHtml(todayFolderLocation + "raw_data/");
+			if(dir == null)
+				processHtml(rawDataDir);
+			else
+				processHtml(dir);
 			
 			outputDataBase();
 		}
@@ -122,7 +127,7 @@ public class YahooRssScraper {
         	File f = new File(dataLocation);
         	f.mkdir();
         	
-        	String rssData = dataLocation + "yahoo_rss.data";
+        	String rssData = dataLocation + dateString + "_" + OUTPUT_DATABASE_NAME;
         	File dataFile = new File(rssData);
         	dataFile.createNewFile();
         	
@@ -156,6 +161,10 @@ public class YahooRssScraper {
 	 * dir is the html files directory
 	 */
 	private void processHtml(String dir) {
+		
+		//make sure dir ends with '/'
+		if(!dir.endsWith("/")) dir = dir + "/";
+		
 		System.out.println("start processing html");
 		dataMap = new HashMap<String, NewsData>();
 		File rawDataFile = new File(dir);
@@ -242,7 +251,7 @@ public class YahooRssScraper {
 	 * fetch data online from yahoo rss.
 	 */
 	private void fetchData() {
-		rawDataDir = todayFolderLocation + "raw_data/";
+		
 		File rawDir = new File(rawDataDir);
 		rawDir.mkdir();
 		for(int i = 0; i < rssCategoryList.size(); i++){
@@ -300,8 +309,8 @@ public class YahooRssScraper {
 			String categoryName = rc.categoryName;
 			rc.rssList = new Gson().fromJson(rssList.get(categoryName), String[].class);
 		}
-		
 		sentenceMinimumLengthRequirement = configJO.get(JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT).getAsInt();
+		rawDataDir = todayFolderLocation + "raw_data/";
 	}
 
 	/*
