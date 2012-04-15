@@ -13,7 +13,6 @@
 	"SCIENCE":["science", "weather", "astronomy", "animal-pets", "dinosaurs-fossils", "biotech", "energy", "green"],
 	"HEALTH":["health", "sexual-health", "medications-drugs", "parenting-kids", "seniors-aging", "diseases-conditions", "vitality"]
 },
-"rss-page-identifier":{"tags":["tag", "head", "style"], "has-id":"xml-viewer-style"},
 "sentence-minimum-length":15
 
 }

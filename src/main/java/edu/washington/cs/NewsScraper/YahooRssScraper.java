@@ -8,20 +8,15 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.TreeMap;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -29,17 +24,20 @@ import org.jsoup.select.Elements;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+/**
+ * this class fetch the rss data from yahoo, and instore the metadata to the database
+ * @author Pingyang He
+ *
+ */
 public class YahooRssScraper {
 	
 	private final String CONFIG_FILE_NAME = "YahooRssConfig";
 	private final String JSON_BASE_URL = "rss-url";
 	private final String JSON_CATEGORY_LIST = "category";
 	private final String JSON_RSS_LIST = "rss-list";
-	private final String JSON_RSS_PAGE_IDENTIFIER = "rss-page-identifier";
 	private final String JSON_FOLDER_NAME = "folder-name";
 	private final String JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT = "sentence-minimum-length";
 	private final String ID_COUNT_FILE_NAME = "idCount";
@@ -49,20 +47,24 @@ public class YahooRssScraper {
 	private String dateString;
 	private ErrorMessagePrinter emp;
 	private String baseURL;
-	private String[] categoryList;
 	private List<RssCategory> rssCategoryList;
-	private String folderDirection;
 	private String todayFolderLocation;
 	private String rawDataDir;
 	private Map<String, NewsData> dataMap;
 	private int sentenceMinimumLengthRequirement;
+	private Set<String> duplicateChecker;
 	
+	/**
+	 * constructor
+	 * @param calendar indicates the date of today
+	 */
 	public YahooRssScraper(Calendar calendar){
 		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 		this.calendar = calendar;
 		dateString = dateFormat.format(calendar.getTime());
 		
 		rssCategoryList = new ArrayList<RssCategory>();
+		duplicateChecker = new HashSet<String>();
 	}
 	
 	/**
@@ -74,23 +76,33 @@ public class YahooRssScraper {
 		
 		loadConfig();
 
-//		fetchData();
+		fetchData();
 		
-//		if(processData)
-			processHtml(todayFolderLocation + "raw_data/");
+		if(processData){
+			processHtml(rawDataDir);
+//			processHtml(todayFolderLocation + "raw_data/");
 			
-			parseData();
+			outputDataBase();
+		}
+		
 		
 	}
 
-	private void parseData() {
-		int prevCount;
-		int currentCount;
+	
+	/*
+	 * output the map data to database in json format
+	 */
+	private void outputDataBase() {
+		System.out.println("start output data");
+		
+		//load id number from last time
+		long prevCount;
+		long currentCount;
 		File idCountFile = new File(ID_COUNT_FILE_NAME);
 		try {
 			Scanner sc = new Scanner(idCountFile);
 			sc.nextInt();
-			prevCount = sc.nextInt();
+			prevCount = sc.nextLong();
 			currentCount = prevCount + 1;
 		} catch (FileNotFoundException e) {
 			emp.printLineMsg("" + this, "can't find idCount");
@@ -98,12 +110,13 @@ public class YahooRssScraper {
 			prevCount = -1;
 		}
 		
-		Map<Integer, NewsData> resultData = new HashMap<Integer, NewsData>();
-		
+		//put id number as key
+		Map<Long, NewsData> resultData = new HashMap<Long, NewsData>();
 		for(String title : dataMap.keySet()){
 			resultData.put(currentCount++, dataMap.get(title));
 		}
 		
+		//output json data
         try {
         	String dataLocation = todayFolderLocation + "data/";
         	File f = new File(dataLocation);
@@ -117,16 +130,24 @@ public class YahooRssScraper {
         	BufferedWriter out = new BufferedWriter(fstream);
 			out.write(new Gson().toJson(resultData));
 			out.close();
+			System.out.println("database write successfully");
 			
-			FileWriter idCountStream = new FileWriter(ID_COUNT_FILE_NAME);
-			BufferedWriter idOut = new BufferedWriter(idCountStream);
-			idOut.write(prevCount + " " + currentCount);
-			idOut.close();
 		} catch (IOException e) {
 			emp.printLineMsg("" + this, "write database to local file failed");
 			e.printStackTrace();
 		}
         
+        //write the new id count to file
+        FileWriter idCountStream;
+		try {
+			idCountStream = new FileWriter(ID_COUNT_FILE_NAME);
+			BufferedWriter idOut = new BufferedWriter(idCountStream);
+			idOut.write(prevCount + " " + currentCount);
+			idOut.close();
+		} catch (IOException e) {
+			emp.printLineMsg("" + this, "can't increase id count");
+			e.printStackTrace();
+		}
         
 	}
 
@@ -135,6 +156,7 @@ public class YahooRssScraper {
 	 * dir is the html files directory
 	 */
 	private void processHtml(String dir) {
+		System.out.println("start processing html");
 		dataMap = new HashMap<String, NewsData>();
 		File rawDataFile = new File(dir);
 		String[] files = rawDataFile.list();
@@ -172,23 +194,26 @@ public class YahooRssScraper {
 						if(para == null){//description has no child tag "p"
 							
 							//length check
-							if(desc.text().length() > sentenceMinimumLengthRequirement){
-								data.content = desc.text();
+							String descText = desc.text().trim();
+							if(descText.length() > sentenceMinimumLengthRequirement 
+								&& !duplicateChecker.contains(descText)){
+								duplicateChecker.add(descText);
+								data.content = descText;
 								dataMap.put(title, data);
 							}
 						}else{
 							
 							//length check
-							if(para.text().length() > sentenceMinimumLengthRequirement){
-								String content = para.text();
+							String paraText = para.text().trim();
+							if(paraText.length() > sentenceMinimumLengthRequirement){
+								if(duplicateChecker.contains(paraText))	continue;
+								duplicateChecker.add(paraText);
 								//get rid of the "..." at the end of the content
-								if(content.endsWith("..."))
-									content = content.substring(0, content.length() - 3);
-								int pubSep = content.indexOf('-');
-								if(pubSep > 2 && pubSep < 30 && content.substring(pubSep - 2, pubSep + 2).equals(") - ")){
-									content = content.substring(pubSep + 2);
-								}
-								data.content = content;
+								if(paraText.endsWith("..."))
+									paraText = paraText.substring(0, paraText.length() - 3);
+								int pubSep = paraText.indexOf("(Reuters) - ");
+								if(pubSep > 0) paraText = paraText.substring(pubSep + 11);
+								data.content = paraText;
 							}
 							
 							try{
@@ -205,12 +230,11 @@ public class YahooRssScraper {
 							dataMap.put(title, data);
 						}
 					}
-				}else{
-					System.out.println(pubdate);
 				}
 			}
 			System.out.println("process " + fileName + " successfully");
 		}
+		System.out.println("end processing html");
 	}
 
 
@@ -287,14 +311,19 @@ public class YahooRssScraper {
 		File folder = new File(dataFolderLoction);
 		if(!folder.exists())
 			folder.mkdir();
-		emp = ErrorMessagePrinter.getInstance(dataFolderLoction);
+		emp = ErrorMessagePrinter.getInstance(dataFolderLoction, calendar);
 		
 		//if today's folder not exist, create one
 		todayFolderLocation = dataFolderLoction + dateString + "/";
 		File todayFolder = new File(todayFolderLocation);
-		if(!todayFolder.mkdir()){
+		todayFolder.mkdir();
+		
+		//if the folder is not created
+		if(!todayFolder.exists()){
 			emp.printLineMsg("" + this, "can't crate today's directory");
+			System.exit(1);
 		}
+		
 		
 	}
 

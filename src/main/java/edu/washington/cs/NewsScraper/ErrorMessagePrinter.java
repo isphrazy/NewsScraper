@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -20,12 +21,24 @@ public class ErrorMessagePrinter {
 	private static ErrorMessagePrinter instance;
 	private static FileWriter errorLog;
 	private static String folderName;
+	private static Calendar calendar;
+	private static String dateString;
 	
+	//singleton
 	private ErrorMessagePrinter(){}
 	
-	public static ErrorMessagePrinter getInstance(String location){
+	/**
+	 * returns the instance of this class
+	 * @param location where the error log file will be stored
+	 * @param cal gives the current time
+	 * @return the instance
+	 */
+	public static ErrorMessagePrinter getInstance(String location, Calendar cal){
 		if(instance == null){
-//			date = todayDate;
+			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+			calendar = cal;
+			dateString = dateFormat.format(calendar.getTime());
+			
 			instance = new ErrorMessagePrinter();
 			folderName = location + "error.log";
 		}
@@ -33,6 +46,11 @@ public class ErrorMessagePrinter {
 		
 	}
 	
+	/**
+	 * this method will print the given strong to error log
+	 * @param methodName where is this method being called
+	 * @param msg the message will be print to file
+	 */
 	public void printLineMsg(String methodName, String msg){
 		try {
 			File errorFile = new File(folderName);
@@ -42,7 +60,7 @@ public class ErrorMessagePrinter {
 			
 			errorLog = new FileWriter(folderName, true);
 			BufferedWriter out = new BufferedWriter(errorLog);
-	        out.write(methodName + ": " + msg + "\n");
+	        out.write(dateString + ": " + methodName + ": " + msg + "\n");
 	        out.close();
 		} catch (IOException e) {
 			e.printStackTrace();
