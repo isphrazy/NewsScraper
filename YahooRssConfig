@@ -9,10 +9,11 @@
 	"ENTERTAINMENT":["entertainment", "celebrity", "tv", "movies", "music", "reviews", "fashion", "books", "arts", "odd"],
 	"SPORTS":["sports", "football", "baseball", "basketball", "college-sports", "soccer", "cycling", "hockey", "tennis", "golf", "world-cup"],
 	"TECH":["tech", "internet", "gadgets", "wireless", "apple-macintosh", "social-media", "security", "open-source", "gaming"],
-	"POLITICS":["politics", "white-house", "congress", "us-government", "politics-world", "the-courts", "opinion", "politics-press-releases", "elections-2012"],
+	"POLITICS":["politics", "white-house", "congress", "us-government", "the-courts", "opinion", "politics-press-releases", "elections-2012"],
 	"SCIENCE":["science", "weather", "astronomy", "animal-pets", "dinosaurs-fossils", "biotech", "energy", "green"],
 	"HEALTH":["health", "sexual-health", "medications-drugs", "parenting-kids", "seniors-aging", "diseases-conditions", "vitality"]
 },
-"rss-page-identifier":{"tags":["tag", "head", "style"], "has-id":"xml-viewer-style"}
+"rss-page-identifier":{"tags":["tag", "head", "style"], "has-id":"xml-viewer-style"},
+"sentence-minimum-length":15
 
 }

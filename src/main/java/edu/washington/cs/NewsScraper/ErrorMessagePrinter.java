@@ -8,12 +8,16 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-
+/**
+ * This class will print the given string to error.log file
+ * This class is singleton, use getInstance method to use the object
+ * 
+ * @author Pingyang He
+ *
+ */
 public class ErrorMessagePrinter {
 	
-//	private static String date;
 	private static ErrorMessagePrinter instance;
-	
 	private static FileWriter errorLog;
 	private static String folderName;
 	
@@ -29,10 +33,6 @@ public class ErrorMessagePrinter {
 		
 	}
 	
-	public void printLineMsg(String msg){
-		printLineMsg("Unknow", msg);
-	}
-	
 	public void printLineMsg(String methodName, String msg){
 		try {
 			File errorFile = new File(folderName);
@@ -41,7 +41,6 @@ public class ErrorMessagePrinter {
 			if(!errorFile.exists()) errorFile.createNewFile();
 			
 			errorLog = new FileWriter(folderName, true);
-			System.out.println(folderName);
 			BufferedWriter out = new BufferedWriter(errorLog);
 	        out.write(methodName + ": " + msg + "\n");
 	        out.close();

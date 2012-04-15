@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +23,8 @@ import org.jsoup.select.Elements;
 
 public class NewsScraperMain {
 	
-	private static String date;
+	private static String dateString;
+	private static Calendar calendar;
 	
     public static void main( String[] args ) throws IOException{
     	
@@ -40,7 +42,8 @@ public class NewsScraperMain {
     
     private static void getDate() {
 		DateFormat dateFormat = new SimpleDateFormat("MM_dd_yyyy");
-		date = dateFormat.format(new Date());
+		calendar = Calendar.getInstance();
+//		dateString = dateFormat.format(date);
 			
 	}
 
@@ -146,14 +149,9 @@ public class NewsScraperMain {
 
 	private static void fetchYahooRSS() throws IOException {
 		
-		YahooRssScraper yrs = new YahooRssScraper(date);
-		yrs.scrape();
+		YahooRssScraper yrs = new YahooRssScraper(calendar);
+		yrs.scrape(false);
 		
-		try{
-			
-		}catch (Exception e){
-			
-		}
 		
 //		String baseURL = "http://news.yahoo.com/rss/";
 //		String rssList[] = new String[]{"us", "business", "education", "stock-markets", 

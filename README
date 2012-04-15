@@ -1,5 +1,5 @@
 YahooRssConfig file contains the configruation info about parsing the Yahoo RSS.
 Some rss are abandoned: 
 	"Dear Abby" seems not very useful, 
-	"all politics" in POLITICS column is the same as "politics" in US column, "all politics" from POLITICS is picked
-	"theater" under "ENTERTAINMENT" and "world" under "POLITICS" are abaondoned since rss are currently unavailable
+	"all politics" in POLITICS category is the same as "politics" in US category, "all politics" from POLITICS is picked
+	"theater" under ENTERTAINMENT category and "world" under POLITICS category are abaondoned since rss are currently unavailable
