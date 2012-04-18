@@ -22,16 +22,19 @@ public class NewsScraperMain {
     	
     	getDate();
     	
-    	String dir = null;
+//    	String dir = null;
     	
     	if(args.length > 0){
     		int argsLength = args.length;
     		if(argsLength == 1 && args[0].equals(PROCESS_ARGUMENT))
-    			fetchYahooRSS(false, dir);
-    		else if(argsLength == 2 && args[0].equals(DIRECTORY_ARGUMENT))
-    			fetchYahooRSS(true, args[1]);
+    			fetchYahooRSS(false, null, null);
+    		else if(argsLength == 3 && args[0].equals(DIRECTORY_ARGUMENT))
+    			fetchYahooRSS(true, args[1], args[2]);
+    		else{
+    			System.out.println("invalid input argument number");
+    		}
     	}else{
-    		fetchYahooRSS(true, null);
+    		fetchYahooRSS(true, null, null);
     	}
     	
     }
@@ -42,10 +45,10 @@ public class NewsScraperMain {
      * the second argument is the directory where the html is stored, if it's null, 
      * use today's directory
      */
-	private static void fetchYahooRSS(boolean proc, String dir) throws IOException {
+	private static void fetchYahooRSS(boolean proc, String sourceDir, String targetDir) throws IOException {
 		
 		YahooRssScraper yrs = new YahooRssScraper(calendar);
-		yrs.scrape(proc, dir);
+		yrs.scrape(proc, sourceDir, targetDir);
 		
 	}
     

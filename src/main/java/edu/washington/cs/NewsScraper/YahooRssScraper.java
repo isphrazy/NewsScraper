@@ -1,10 +1,16 @@
 package edu.washington.cs.NewsScraper;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -42,6 +48,8 @@ public class YahooRssScraper {
 	private final String JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT = "sentence-minimum-length";
 	private final String ID_COUNT_FILE_NAME = "idCount";
 	private final String OUTPUT_DATABASE_NAME = "yahoo_rss.data";
+	private final String REUTERS_KEYWORD = "(Reuters) - ";
+	private final String GARBAGE_TAIL = ". ...";
 	
 	private JsonObject configJO;
 	private Calendar calendar;
@@ -72,20 +80,22 @@ public class YahooRssScraper {
 	 * 
 	 * @param processData if this is true, the data fetched online will be processed and stored
 	 * to database, otherwise only the fetched data will be saved
-	 * @param dir tells where the html will be scraped is stored; if it's null, use today's directory
+	 * @param sourceDir tells where the html will be scraped is stored; if it's null, use today's directory
 	 */
-	public void scrape(boolean processData, String dir){
+	public void scrape(boolean processData, String sourceDir, String targetDir){
 		
 		loadConfig();
 
-		if(dir == null)
+		if(sourceDir == null)
 			fetchData();
 		
 		if(processData){
-			if(dir == null)
+			if(sourceDir == null)
 				processHtml(rawDataDir);
-			else
-				processHtml(dir);
+			else{
+				todayFolderLocation = targetDir;
+				processHtml(sourceDir);
+			}
 			
 			outputDataBase();
 		}
@@ -132,8 +142,9 @@ public class YahooRssScraper {
         	dataFile.createNewFile();
         	
         	FileWriter fstream = new FileWriter(rssData);
+//        	BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),"UTF8"));
         	BufferedWriter out = new BufferedWriter(fstream);
-			out.write(new Gson().toJson(resultData));
+        	out.write(new Gson().toJson(resultData));
 			out.close();
 			System.out.println("database write successfully");
 			
@@ -175,7 +186,8 @@ public class YahooRssScraper {
 			String rssName = fileName.substring(seperatorPos + 1, fileName.indexOf('.'));
 			
 			//read rss file from local disk
-			String fileContent = getFileContent(dir + fileName);
+			String fileContent = getFileContent(dir + fileName, "UTF8");
+//			System.out.println("fileContent: " + fileContent);
 			
 	    	Document wholeHtml = Jsoup.parse(fileContent);
 	    	
@@ -204,8 +216,10 @@ public class YahooRssScraper {
 							
 							//length check
 							String descText = desc.text().trim();
+							
 							if(descText.length() > sentenceMinimumLengthRequirement 
-								&& !duplicateChecker.contains(descText)){
+									&& !duplicateChecker.contains(descText)){
+								descText = fixContent(descText);
 								duplicateChecker.add(descText);
 								data.content = descText;
 								dataMap.put(title, data);
@@ -217,11 +231,7 @@ public class YahooRssScraper {
 							if(paraText.length() > sentenceMinimumLengthRequirement){
 								if(duplicateChecker.contains(paraText))	continue;
 								duplicateChecker.add(paraText);
-								//get rid of the "..." at the end of the content
-								if(paraText.endsWith("..."))
-									paraText = paraText.substring(0, paraText.length() - 3);
-								int pubSep = paraText.indexOf("(Reuters) - ");
-								if(pubSep > 0) paraText = paraText.substring(pubSep + 11);
+								paraText = fixContent(paraText);
 								data.content = paraText;
 							}
 							
@@ -234,7 +244,7 @@ public class YahooRssScraper {
 								if(img.attr("title").length() > sentenceMinimumLengthRequirement)
 									data.imgTitle = img.attr("title");
 							}catch (NullPointerException e){
-								System.out.println(categoryName + ": " + rssName + ": " + title + " has no image");
+								System.out.println(categoryName + ": " + rssName + ": " + title + " ----- has no image");
 							}
 							dataMap.put(title, data);
 						}
@@ -246,6 +256,18 @@ public class YahooRssScraper {
 		System.out.println("end processing html");
 	}
 
+
+	private String fixContent(String paraText) {
+		//get rid of the "..." at the end of the content
+		if(paraText.endsWith(GARBAGE_TAIL)){
+			paraText = paraText.substring(0, paraText.length() - 3).trim();
+		}
+		//get rid of the leading publisher info
+		int pubSep = paraText.indexOf(REUTERS_KEYWORD);
+		if(pubSep >= 0) paraText = paraText.substring(pubSep + REUTERS_KEYWORD.length());
+		
+		return paraText;
+	}
 
 	/*
 	 * fetch data online from yahoo rss.
@@ -266,7 +288,8 @@ public class YahooRssScraper {
 					//write fetched xml to local data
 					FileWriter fstream = new FileWriter(rawDataDir + rCat.categoryName + "_" + rssName + ".html", true);
 					BufferedWriter out = new BufferedWriter(fstream);
-			        out.write(doc.toString());
+//					BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rawDataDir + rCat.categoryName + "_" + rssName + ".html")),"UTF8"));
+					out.write(doc.toString());
 			        out.close();
 			        
 			        System.out.println(rCat.categoryName + ": " + rssName + " fetched successfully");
@@ -286,7 +309,8 @@ public class YahooRssScraper {
 	 */
 	private void loadConfig() {
 		
-		String configFile = getFileContent(CONFIG_FILE_NAME);
+		String configFile = getFileContent(CONFIG_FILE_NAME, "ascii");
+//		System.out.println(configFile);
 		configJO = (JsonObject)(new JsonParser()).parse(configFile);
 		
 		//if data folder not exist, create one
@@ -339,9 +363,15 @@ public class YahooRssScraper {
 	/*
 	 * load file to a string then return it 
 	 */
-	private String getFileContent(String fileName) {
+	private String getFileContent(String fileName, String encode) {
 		StringBuilder sb = new StringBuilder();
 		try {
+//			BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), encode));
+//			
+//			String currentLine;
+//			while((currentLine = in.readLine()) != null){
+//				sb.append(currentLine);
+//			}
 			Scanner configScanner = new Scanner(new File(fileName));
 			while(configScanner.hasNextLine()){
 				sb.append(configScanner.nextLine());
@@ -350,6 +380,10 @@ public class YahooRssScraper {
 			emp.printLineMsg("" + this, "can not load file: " + fileName);
 			e.printStackTrace();
 			return null;
+//		} catch (UnsupportedEncodingException e) {
+//			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		return sb.toString();
 	}
