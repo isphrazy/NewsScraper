@@ -22,8 +22,6 @@ public class NewsScraperMain {
     	
     	getDate();
     	
-//    	String dir = null;
-    	
     	if(args.length > 0){
     		int argsLength = args.length;
     		if(argsLength == 1 && args[0].equals(PROCESS_ARGUMENT))

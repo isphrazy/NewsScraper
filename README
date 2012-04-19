@@ -7,7 +7,13 @@ without any argument: fetch the data online, then process the data and store to 
 YahooRssConfig file contains the configruation info about parsing the Yahoo RSS.
 
 Leading publisher info(eg: "(Reuters) -" ) is throwed
-Ending "..." is throwed
+if the content ends with "./!/? ...", then "..." is throwed
+if the content ends with [...], since the sentence is not complete, so the whole content is abandoned
+if the content ends with "...", and the sentence is incomplete, the whole content is abandoned
+
+after scraping the text from yahoo news, some of the tags are at wrong position, for eg:
+<link /> http://xxxx instead of <link> http://xxx </link>
+or like: <source><source/>Reuters instead of <source>Reusters</source>
 
 Some rss are abandoned: 
 	"Dear Abby" seems not very useful, 

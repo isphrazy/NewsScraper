@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -23,6 +24,8 @@ import java.util.Scanner;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -32,6 +35,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * this class fetch the rss data from yahoo, and instore the metadata to the database
@@ -48,8 +52,15 @@ public class YahooRssScraper {
 	private final String JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT = "sentence-minimum-length";
 	private final String ID_COUNT_FILE_NAME = "idCount";
 	private final String OUTPUT_DATABASE_NAME = "yahoo_rss.data";
+	private final String TAG_LINK = "<link />";
+	private final String TAG_SOURCE = "</source>";
 	private final String REUTERS_KEYWORD = "(Reuters) - ";
-	private final String GARBAGE_TAIL = ". ...";
+	private final String LINK_GARBAGE_TAIL = "\n";
+	private final String GARBAGE_TAIL = "...";
+	private final String USELESS_CONTENT_INDICATOR = "[...]";
+	private final String[] ENDING_PUNCTUATION = {".", "?", "!", ".\"", "?\"", "!\""};
+	private final String ENCODE = "UTF-8";
+	private final String FOLDER_PATH_SEPERATOR = "/";
 	
 	private JsonObject configJO;
 	private Calendar calendar;
@@ -84,6 +95,8 @@ public class YahooRssScraper {
 	 */
 	public void scrape(boolean processData, String sourceDir, String targetDir){
 		
+		System.out.println(processData + " " + sourceDir + " " + targetDir);
+		
 		loadConfig();
 
 		if(sourceDir == null)
@@ -93,14 +106,20 @@ public class YahooRssScraper {
 			if(sourceDir == null)
 				processHtml(rawDataDir);
 			else{
-				todayFolderLocation = targetDir;
+				todayFolderLocation = targetDir.trim();
+				if(!todayFolderLocation.endsWith(FOLDER_PATH_SEPERATOR))todayFolderLocation += FOLDER_PATH_SEPERATOR;
+				System.out.println("todayFolderLocation: " + todayFolderLocation);
+				File locationFile = new File(todayFolderLocation);
+				locationFile.mkdir();
+				if(!locationFile.exists())
+					emp.printLineMsg("" + this, "failed to create target folder");
+				
 				processHtml(sourceDir);
 			}
-			
 			outputDataBase();
 		}
-		
-		
+
+	
 	}
 
 	
@@ -108,7 +127,7 @@ public class YahooRssScraper {
 	 * output the map data to database in json format
 	 */
 	private void outputDataBase() {
-		System.out.println("start output data");
+		System.out.println("start to output data");
 		
 		//load id number from last time
 		long prevCount;
@@ -126,33 +145,40 @@ public class YahooRssScraper {
 		}
 		
 		//put id number as key
-		Map<Long, NewsData> resultData = new HashMap<Long, NewsData>();
-		for(String title : dataMap.keySet()){
-			resultData.put(currentCount++, dataMap.get(title));
-		}
 		
-		//output json data
-        try {
-        	String dataLocation = todayFolderLocation + "data/";
-        	File f = new File(dataLocation);
-        	f.mkdir();
-        	
-        	String rssData = dataLocation + dateString + "_" + OUTPUT_DATABASE_NAME;
-        	File dataFile = new File(rssData);
-        	dataFile.createNewFile();
-        	
-        	FileWriter fstream = new FileWriter(rssData);
-//        	BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),"UTF8"));
-        	BufferedWriter out = new BufferedWriter(fstream);
-        	out.write(new Gson().toJson(resultData));
-			out.close();
-			System.out.println("database write successfully");
+		try {
+
+			String dataLocation = todayFolderLocation + "data/";
+			System.out.println("dataLocation: " + dataLocation);
+			File f = new File(dataLocation);
+			f.mkdir();
 			
+			String rssData = dataLocation + dateString + "_" + OUTPUT_DATABASE_NAME;
+			System.out.println("rssData: " + rssData);
+			File dataFile = new File(rssData);
+			dataFile.createNewFile();
+			
+			//not using JSON since converting json to string doesn't support unicode
+			StringBuilder sb = new StringBuilder();
+			sb.append("{");
+			String seperator = ", ";
+			for(String title : dataMap.keySet()){
+				sb.append("\"" + currentCount++ + "\": " + dataMap.get(title).toJsonString() + seperator);
+			}
+			sb.delete(sb.length() - seperator.length(), sb.length());
+			sb.append("}");
+			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),ENCODE));
+			out.write(sb.toString());
+			out.close();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
 		} catch (IOException e) {
-			emp.printLineMsg("" + this, "write database to local file failed");
 			e.printStackTrace();
 		}
-        
+		
+		
         //write the new id count to file
         FileWriter idCountStream;
 		try {
@@ -186,7 +212,7 @@ public class YahooRssScraper {
 			String rssName = fileName.substring(seperatorPos + 1, fileName.indexOf('.'));
 			
 			//read rss file from local disk
-			String fileContent = getFileContent(dir + fileName, "UTF8");
+			String fileContent = getFileContent(dir + fileName, ENCODE);
 //			System.out.println("fileContent: " + fileContent);
 			
 	    	Document wholeHtml = Jsoup.parse(fileContent);
@@ -205,21 +231,26 @@ public class YahooRssScraper {
 					//make sure no duplicate news
 					if(!dataMap.containsKey(title)){
 					
-					//make sure it's today's news
+						//make sure it's today's news
 						Element desc = item.getElementsByTag("description").first();
 						desc = Jsoup.parse(StringEscapeUtils.unescapeHtml4(desc.toString()));
 						
 						Element para = desc.getElementsByTag("p").first();
 //						
 						NewsData data = new NewsData(categoryName, rssName, title, dateString);
+//						
+						getURL(item, data);
+						
+						getSource(item, data);
+						
 						if(para == null){//description has no child tag "p"
 							
 							//length check
 							String descText = desc.text().trim();
-							
+							descText = fixContent(descText);
+							if(descText == null) continue;
 							if(descText.length() > sentenceMinimumLengthRequirement 
 									&& !duplicateChecker.contains(descText)){
-								descText = fixContent(descText);
 								duplicateChecker.add(descText);
 								data.content = descText;
 								dataMap.put(title, data);
@@ -229,9 +260,10 @@ public class YahooRssScraper {
 							//length check
 							String paraText = para.text().trim();
 							if(paraText.length() > sentenceMinimumLengthRequirement){
+								paraText = fixContent(paraText);
+								if(paraText == null) continue;
 								if(duplicateChecker.contains(paraText))	continue;
 								duplicateChecker.add(paraText);
-								paraText = fixContent(paraText);
 								data.content = paraText;
 							}
 							
@@ -239,10 +271,19 @@ public class YahooRssScraper {
 								//process image info
 								Element img = para.getElementsByTag("a").first().getElementsByTag("img").first();
 								
-								if(img.attr("alt").length() > sentenceMinimumLengthRequirement)
-									data.imgAlt = img.attr("alt");
-								if(img.attr("title").length() > sentenceMinimumLengthRequirement)
+								String imgAlt = img.attr("alt").trim();
+								if(imgAlt.length() > sentenceMinimumLengthRequirement
+										&& !duplicateChecker.contains(imgAlt)){
+									data.imgAlt = imgAlt;
+									duplicateChecker.add(imgAlt);
+								}
+								
+								String imgTitle = img.attr("title");
+								if(imgTitle.length() > sentenceMinimumLengthRequirement
+										&& !duplicateChecker.contains(imgTitle)){
 									data.imgTitle = img.attr("title");
+									duplicateChecker.add(imgTitle);
+								}
 							}catch (NullPointerException e){
 								System.out.println(categoryName + ": " + rssName + ": " + title + " ----- has no image");
 							}
@@ -257,42 +298,102 @@ public class YahooRssScraper {
 	}
 
 
-	private String fixContent(String paraText) {
-		//get rid of the "..." at the end of the content
-		if(paraText.endsWith(GARBAGE_TAIL)){
-			paraText = paraText.substring(0, paraText.length() - 3).trim();
+	/*
+	 * gets the source of given ite, then store it in data
+	 */
+	private void getSource(Element item, NewsData data) {
+		try{
+			String source = item.getElementsByTag("source").first().text();
+			
+			if(source.length() < 1){
+				String itemText = item.html();
+				int sourceTagPos = itemText.indexOf(TAG_SOURCE);
+				int sourceEndPos = itemText.indexOf('<', sourceTagPos + 1);
+				if(sourceTagPos >= 0 && sourceEndPos >= 0)
+					source = removeNewLineTail(itemText.substring(sourceTagPos + TAG_SOURCE.length(), sourceEndPos));
+			}
+			
+			data.source = source;
+		}catch (Exception e){
+			return;
 		}
+		
+	}
+
+	/*
+	 * gets the url of the given item, and stores it in data
+	 */
+	private void getURL(Element item, NewsData data) {
+		try{
+			String url = item.getElementsByTag("link").first().text().trim();
+			if(url.length() < 1){
+				String itemText = item.html();
+				int linkTagPos = itemText.indexOf(TAG_LINK);
+				int linkEndPos = itemText.indexOf('<', linkTagPos + 1);
+				if(linkTagPos >= 0 && linkEndPos >= 0)
+					url = removeNewLineTail(itemText.substring(linkTagPos + TAG_LINK.length(), linkEndPos));
+			}
+			data.url = url.trim();
+		}catch (Exception e){
+			return;
+		}
+	}
+	
+	/*
+	 * remove the new line character at the end of the given string
+	 */
+	private String removeNewLineTail(String str){
+		if(str.endsWith(LINK_GARBAGE_TAIL)) 
+			return str.substring(0, str.length() - LINK_GARBAGE_TAIL.length()).trim();
+		return str;
+	}
+
+	/*
+	 * get rid of useless information in a paragraph, if the whole paragraph is 
+	 * useless, return null 
+	 */
+	private String fixContent(String paraText) {
+		
+		if(paraText.endsWith(USELESS_CONTENT_INDICATOR)) return null;	
+
 		//get rid of the leading publisher info
 		int pubSep = paraText.indexOf(REUTERS_KEYWORD);
 		if(pubSep >= 0) paraText = paraText.substring(pubSep + REUTERS_KEYWORD.length());
 		
-		return paraText;
+		if(paraText.endsWith(GARBAGE_TAIL)){
+			//get rid of the "..." at the end of the content
+			paraText = paraText.substring(0, paraText.length() - 3).trim();
+			for(int i = 0; i < ENDING_PUNCTUATION.length; i++){
+				if(paraText.endsWith(ENDING_PUNCTUATION[i])) return paraText;
+			}
+		}else
+			return paraText;
+		
+		return null;
 	}
 
 	/*
 	 * fetch data online from yahoo rss.
 	 */
 	private void fetchData() {
-		
+		System.out.println("start fectching data");
 		File rawDir = new File(rawDataDir);
 		rawDir.mkdir();
 		for(int i = 0; i < rssCategoryList.size(); i++){
 			RssCategory rCat = rssCategoryList.get(i);
-//			for(String rssName : rCat.rssList.keySet()){
 			for(int j = 0; j < rCat.rssList.length; j++){
 				String rssName = rCat.rssList[j];
 				try {
 					Document doc = Jsoup.connect(baseURL + rssName).get();
-//					rCat.rssList.put(rssName, doc);
 					
 					//write fetched xml to local data
 					FileWriter fstream = new FileWriter(rawDataDir + rCat.categoryName + "_" + rssName + ".html", true);
-					BufferedWriter out = new BufferedWriter(fstream);
-//					BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rawDataDir + rCat.categoryName + "_" + rssName + ".html")),"UTF8"));
+//					BufferedWriter out = new BufferedWriter(fstream);
+					BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rawDataDir + rCat.categoryName + "_" + rssName + ".html"), true),ENCODE));
 					out.write(doc.toString());
 			        out.close();
 			        
-			        System.out.println(rCat.categoryName + ": " + rssName + " fetched successfully");
+			        System.out.println("fetch " + rCat.categoryName + ": " + rssName + " successfully");
 			        
 				} catch (IOException e) {
 					emp.printLineMsg("" + this, "can not download: " + rCat.categoryName + "_" + rssName);
@@ -308,9 +409,9 @@ public class YahooRssScraper {
 	 * read the yahoo configuration file and load it into
 	 */
 	private void loadConfig() {
+		System.out.println("loading configuration file");
 		
 		String configFile = getFileContent(CONFIG_FILE_NAME, "ascii");
-//		System.out.println(configFile);
 		configJO = (JsonObject)(new JsonParser()).parse(configFile);
 		
 		//if data folder not exist, create one
@@ -372,10 +473,19 @@ public class YahooRssScraper {
 //			while((currentLine = in.readLine()) != null){
 //				sb.append(currentLine);
 //			}
-			Scanner configScanner = new Scanner(new File(fileName));
+			
+//			Scanner configScanner = new Scanner(new File(fileName));
+//			while(configScanner.hasNextLine()){
+//				sb.append(configScanner.nextLine());
+//			}
+
+			Scanner configScanner = new Scanner(new File(fileName), encode);
 			while(configScanner.hasNextLine()){
 				sb.append(configScanner.nextLine());
 			}
+			
+			configScanner.close();
+			
 		} catch (FileNotFoundException e) {
 			emp.printLineMsg("" + this, "can not load file: " + fileName);
 			e.printStackTrace();
@@ -385,6 +495,7 @@ public class YahooRssScraper {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+//		System.out.println(sb.toString());
 		return sb.toString();
 	}
 	
@@ -413,15 +524,70 @@ public class YahooRssScraper {
 		public String content;
 		public String category;
 		public String subCategory;
+		public String url;
+		public String source;
 		
 		public NewsData(String category, String subCategory, String title, String date){
 			imgAlt = "";
 			content = "";
 			imgTitle = "";
+			url = "";
+			source = "";
 			this.category = category;
 			this.subCategory = subCategory;
 			this.title = title;
 			this.date = date;
+		}
+		
+		/**
+		 * 
+		 * @return a JSONObject contains all the fields of this class
+		 */
+		public JSONObject toJSONObject(){
+			JSONObject jObject = new JSONObject();
+			try {
+				Field[] fields = this.getClass().getFields();
+				for(Field field : fields){
+					jObject.put(field.getName(), field.get(this));
+//					System.out.println(field.getName() + ": " + jObject.get(field.getName()));
+				}
+			} catch (JSONException e) {
+				e.printStackTrace();
+			} catch (SecurityException e) {
+				e.printStackTrace();
+			}catch (IllegalArgumentException e) {
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			}
+			
+			return jObject;
+		}
+		
+		public String toJsonString(){
+			StringBuilder sb = new StringBuilder();
+			sb.append("{");
+			Field[] fields = this.getClass().getFields();
+			String seperator = ", ";
+			try {
+				for(Field field : fields){
+					sb.append("\""+ field.getName() + "\"");
+					sb.append(":");
+					sb.append("\"" + field.get(this).toString().replace("\"", "\\\"") + "\"");
+					sb.append(seperator);
+	//				sb.append(b)
+	//				jObject.put(field.getName(), field.get(this));
+				}
+			} catch (IllegalArgumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			sb.delete(sb.length() - seperator.length(), sb.length());
+			sb.append("}");
+			return sb.toString();
 		}
 		
 	}
