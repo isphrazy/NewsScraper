@@ -1,14 +1,11 @@
 package edu.washington.cs.NewsScraper;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
@@ -35,7 +32,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonWriter;
 
 /**
  * this class fetch the rss data from yahoo, and instore the metadata to the database
@@ -50,6 +46,7 @@ public class YahooRssScraper {
 	private final String JSON_RSS_LIST = "rss-list";
 	private final String JSON_FOLDER_NAME = "folder-name";
 	private final String JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT = "sentence-minimum-length";
+	private final String JSON_DATE_FORMAT = "date-format";
 	private final String ID_COUNT_FILE_NAME = "idCount";
 	private final String OUTPUT_DATABASE_NAME = "yahoo_rss.data";
 	private final String TAG_LINK = "<link />";
@@ -79,9 +76,8 @@ public class YahooRssScraper {
 	 * @param calendar indicates the date of today
 	 */
 	public YahooRssScraper(Calendar calendar){
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+		
 		this.calendar = calendar;
-		dateString = dateFormat.format(calendar.getTime());
 		
 		rssCategoryList = new ArrayList<RssCategory>();
 		duplicateChecker = new HashSet<String>();
@@ -95,8 +91,6 @@ public class YahooRssScraper {
 	 */
 	public void scrape(boolean processData, String sourceDir, String targetDir){
 		
-		System.out.println(processData + " " + sourceDir + " " + targetDir);
-		
 		loadConfig();
 
 		if(sourceDir == null)
@@ -105,12 +99,12 @@ public class YahooRssScraper {
 		if(processData){
 			if(sourceDir == null)
 				processHtml(rawDataDir);
+			
 			else{
 				todayFolderLocation = targetDir.trim();
 				if(!todayFolderLocation.endsWith(FOLDER_PATH_SEPERATOR))todayFolderLocation += FOLDER_PATH_SEPERATOR;
-				System.out.println("todayFolderLocation: " + todayFolderLocation);
 				File locationFile = new File(todayFolderLocation);
-				locationFile.mkdir();
+				locationFile.mkdirs();
 				if(!locationFile.exists())
 					emp.printLineMsg("" + this, "failed to create target folder");
 				
@@ -118,8 +112,6 @@ public class YahooRssScraper {
 			}
 			outputDataBase();
 		}
-
-	
 	}
 
 	
@@ -144,17 +136,13 @@ public class YahooRssScraper {
 			prevCount = -1;
 		}
 		
-		//put id number as key
-		
 		try {
 
 			String dataLocation = todayFolderLocation + "data/";
-			System.out.println("dataLocation: " + dataLocation);
 			File f = new File(dataLocation);
-			f.mkdir();
+			f.mkdirs();
 			
 			String rssData = dataLocation + dateString + "_" + OUTPUT_DATABASE_NAME;
-			System.out.println("rssData: " + rssData);
 			File dataFile = new File(rssData);
 			dataFile.createNewFile();
 			
@@ -170,11 +158,9 @@ public class YahooRssScraper {
 			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),ENCODE));
 			out.write(sb.toString());
 			out.close();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
+			
+		} catch (Exception e) {
+			emp.printLineMsg("" + this, "fail to output data");
 			e.printStackTrace();
 		}
 		
@@ -378,7 +364,7 @@ public class YahooRssScraper {
 	private void fetchData() {
 		System.out.println("start fectching data");
 		File rawDir = new File(rawDataDir);
-		rawDir.mkdir();
+		rawDir.mkdirs();
 		for(int i = 0; i < rssCategoryList.size(); i++){
 			RssCategory rCat = rssCategoryList.get(i);
 			for(int j = 0; j < rCat.rssList.length; j++){
@@ -387,7 +373,7 @@ public class YahooRssScraper {
 					Document doc = Jsoup.connect(baseURL + rssName).get();
 					
 					//write fetched xml to local data
-					FileWriter fstream = new FileWriter(rawDataDir + rCat.categoryName + "_" + rssName + ".html", true);
+//					FileWriter fstream = new FileWriter(rawDataDir + rCat.categoryName + "_" + rssName + ".html", true);
 //					BufferedWriter out = new BufferedWriter(fstream);
 					BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rawDataDir + rCat.categoryName + "_" + rssName + ".html"), true),ENCODE));
 					out.write(doc.toString());
@@ -413,6 +399,10 @@ public class YahooRssScraper {
 		
 		String configFile = getFileContent(CONFIG_FILE_NAME, "ascii");
 		configJO = (JsonObject)(new JsonParser()).parse(configFile);
+
+		//load date format
+		DateFormat dateFormat = new SimpleDateFormat(configJO.get(JSON_DATE_FORMAT).getAsString());
+		dateString = dateFormat.format(calendar.getTime());
 		
 		//if data folder not exist, create one
 		makeTodayDirectory(configJO.get(JSON_FOLDER_NAME).getAsString());
@@ -436,6 +426,7 @@ public class YahooRssScraper {
 		}
 		sentenceMinimumLengthRequirement = configJO.get(JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT).getAsInt();
 		rawDataDir = todayFolderLocation + "raw_data/";
+		
 	}
 
 	/*
@@ -467,17 +458,6 @@ public class YahooRssScraper {
 	private String getFileContent(String fileName, String encode) {
 		StringBuilder sb = new StringBuilder();
 		try {
-//			BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), encode));
-//			
-//			String currentLine;
-//			while((currentLine = in.readLine()) != null){
-//				sb.append(currentLine);
-//			}
-			
-//			Scanner configScanner = new Scanner(new File(fileName));
-//			while(configScanner.hasNextLine()){
-//				sb.append(configScanner.nextLine());
-//			}
 
 			Scanner configScanner = new Scanner(new File(fileName), encode);
 			while(configScanner.hasNextLine()){
@@ -490,12 +470,7 @@ public class YahooRssScraper {
 			emp.printLineMsg("" + this, "can not load file: " + fileName);
 			e.printStackTrace();
 			return null;
-//		} catch (UnsupportedEncodingException e) {
-//			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
-//		System.out.println(sb.toString());
 		return sb.toString();
 	}
 	
@@ -505,7 +480,6 @@ public class YahooRssScraper {
 	 */
 	private class RssCategory{
 		public String categoryName;
-//		public Map<String, Document> rssList = new TreeMap<String, Document>();
 		public String[] rssList;
 		
 		public RssCategory(String categoryName){
@@ -549,7 +523,6 @@ public class YahooRssScraper {
 				Field[] fields = this.getClass().getFields();
 				for(Field field : fields){
 					jObject.put(field.getName(), field.get(this));
-//					System.out.println(field.getName() + ": " + jObject.get(field.getName()));
 				}
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -564,6 +537,10 @@ public class YahooRssScraper {
 			return jObject;
 		}
 		
+		/**
+		 * returns this object as json string
+		 * @return the json string that represents this object
+		 */
 		public String toJsonString(){
 			StringBuilder sb = new StringBuilder();
 			sb.append("{");
@@ -575,14 +552,10 @@ public class YahooRssScraper {
 					sb.append(":");
 					sb.append("\"" + field.get(this).toString().replace("\"", "\\\"") + "\"");
 					sb.append(seperator);
-	//				sb.append(b)
-	//				jObject.put(field.getName(), field.get(this));
 				}
 			} catch (IllegalArgumentException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IllegalAccessException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			sb.delete(sb.length() - seperator.length(), sb.length());

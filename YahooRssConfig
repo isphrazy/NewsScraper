@@ -1,5 +1,5 @@
 {
-"folder-name":"yahoo_data/",
+"folder-name":"./yahoo_data/",
 "rss-url":"http://news.yahoo.com/rss/",
 "category":["US", "BUSINESS", "WORLD", "ENTERTAINMENT", "SPORTS", "TECH", "POLITICS", "SCIENCE", "HEALTH"],
 "rss-list":{
@@ -13,6 +13,6 @@
 	"SCIENCE":["science", "weather", "astronomy", "animal-pets", "dinosaurs-fossils", "biotech", "energy", "green"],
 	"HEALTH":["health", "sexual-health", "medications-drugs", "parenting-kids", "seniors-aging", "diseases-conditions", "vitality"]
 },
-"sentence-minimum-length":15
-
+"sentence-minimum-length":15,
+"date-format":"yyyy-MM-dd"
 }
