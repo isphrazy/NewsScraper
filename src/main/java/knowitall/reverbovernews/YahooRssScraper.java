@@ -1,4 +1,4 @@
-package edu.washington.cs.NewsScraper;
+package knowitall.reverbovernews;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -93,8 +93,8 @@ public class YahooRssScraper {
 		
 		loadConfig();
 
-		if(sourceDir == null)
-			fetchData();
+//		if(sourceDir == null)
+//			fetchData();
 		
 		if(processData){
 			if(sourceDir == null)
@@ -153,6 +153,7 @@ public class YahooRssScraper {
 			for(String title : dataMap.keySet()){
 				sb.append("\"" + currentCount++ + "\": " + dataMap.get(title).toJsonString() + seperator);
 			}
+			//fense post problem
 			sb.delete(sb.length() - seperator.length(), sb.length());
 			sb.append("}");
 			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),ENCODE));
@@ -206,76 +207,79 @@ public class YahooRssScraper {
 			//each item contains a news
 	    	Elements items = wholeHtml.getElementsByTag("item");
 			for(Element item : items){
-				
-				String pubdate = item.getElementsByTag("pubdate").first().text();
-				if(pubdate.substring(0, 10).equals(dateString)){
-					
-					//get news' title
-					Element titleEle = item.getElementsByTag("title").first();
-					String title = titleEle.text().trim();
-					
-					//make sure no duplicate news
-					if(!dataMap.containsKey(title)){
-					
-						//make sure it's today's news
-						Element desc = item.getElementsByTag("description").first();
-						desc = Jsoup.parse(StringEscapeUtils.unescapeHtml4(desc.toString()));
+				try{
+					String pubdate = item.getElementsByTag("pubdate").first().text();
+					if(pubdate.substring(0, 10).equals(dateString)){
 						
-						Element para = desc.getElementsByTag("p").first();
-//						
-						NewsData data = new NewsData(categoryName, rssName, title, dateString);
-//						
-						getURL(item, data);
+						//get news' title
+						Element titleEle = item.getElementsByTag("title").first();
+						String title = titleEle.text().trim();
 						
-						getSource(item, data);
-						
-						if(para == null){//description has no child tag "p"
+						//make sure no duplicate news
+						if(!dataMap.containsKey(title)){
 							
-							//length check
-							String descText = desc.text().trim();
-							descText = fixContent(descText);
-							if(descText == null) continue;
-							if(descText.length() > sentenceMinimumLengthRequirement 
-									&& !duplicateChecker.contains(descText)){
-								duplicateChecker.add(descText);
-								data.content = descText;
+							//make sure it's today's news
+							Element desc = item.getElementsByTag("description").first();
+							desc = Jsoup.parse(StringEscapeUtils.unescapeHtml4(desc.toString()));
+							
+							Element para = desc.getElementsByTag("p").first();
+//						
+							NewsData data = new NewsData(categoryName, rssName, title, dateString);
+//						
+							getURL(item, data);
+							
+							getSource(item, data);
+							
+							if(para == null){//description has no child tag "p"
+								
+								//length check
+								String descText = desc.text().trim();
+								descText = fixContent(descText);
+								if(descText == null) continue;
+								if(descText.length() > sentenceMinimumLengthRequirement 
+										&& !duplicateChecker.contains(descText)){
+									duplicateChecker.add(descText);
+									data.content = descText;
+									dataMap.put(title, data);
+								}
+							}else{
+								
+								//length check
+								String paraText = para.text().trim();
+								if(paraText.length() > sentenceMinimumLengthRequirement){
+									paraText = fixContent(paraText);
+									if(paraText == null) continue;
+									if(duplicateChecker.contains(paraText))	continue;
+									duplicateChecker.add(paraText);
+									data.content = paraText;
+								}
+								
+								try{
+									//process image info
+									Element img = para.getElementsByTag("a").first().getElementsByTag("img").first();
+									
+									String imgAlt = img.attr("alt").trim();
+									if(imgAlt.length() > sentenceMinimumLengthRequirement
+											&& !duplicateChecker.contains(imgAlt)){
+										data.imgAlt = imgAlt;
+										duplicateChecker.add(imgAlt);
+									}
+									
+									String imgTitle = img.attr("title");
+									if(imgTitle.length() > sentenceMinimumLengthRequirement
+											&& !duplicateChecker.contains(imgTitle)){
+										data.imgTitle = img.attr("title");
+										duplicateChecker.add(imgTitle);
+									}
+								}catch (NullPointerException e){
+									System.out.println(categoryName + ": " + rssName + ": " + title + " ----- has no image");
+								}
 								dataMap.put(title, data);
 							}
-						}else{
-							
-							//length check
-							String paraText = para.text().trim();
-							if(paraText.length() > sentenceMinimumLengthRequirement){
-								paraText = fixContent(paraText);
-								if(paraText == null) continue;
-								if(duplicateChecker.contains(paraText))	continue;
-								duplicateChecker.add(paraText);
-								data.content = paraText;
-							}
-							
-							try{
-								//process image info
-								Element img = para.getElementsByTag("a").first().getElementsByTag("img").first();
-								
-								String imgAlt = img.attr("alt").trim();
-								if(imgAlt.length() > sentenceMinimumLengthRequirement
-										&& !duplicateChecker.contains(imgAlt)){
-									data.imgAlt = imgAlt;
-									duplicateChecker.add(imgAlt);
-								}
-								
-								String imgTitle = img.attr("title");
-								if(imgTitle.length() > sentenceMinimumLengthRequirement
-										&& !duplicateChecker.contains(imgTitle)){
-									data.imgTitle = img.attr("title");
-									duplicateChecker.add(imgTitle);
-								}
-							}catch (NullPointerException e){
-								System.out.println(categoryName + ": " + rssName + ": " + title + " ----- has no image");
-							}
-							dataMap.put(title, data);
 						}
 					}
+				}catch (Exception e){
+					emp.printLineMsg("" + this + ": " + categoryName + " " + rssName, e.getMessage());
 				}
 			}
 			System.out.println("process " + fileName + " successfully");
@@ -397,15 +401,24 @@ public class YahooRssScraper {
 	private void loadConfig() {
 		System.out.println("loading configuration file");
 		
-		String configFile = getFileContent(CONFIG_FILE_NAME, "ascii");
-		configJO = (JsonObject)(new JsonParser()).parse(configFile);
+		Config config = new Config();
+		
+		try {
+			config.loadConfig(CONFIG_FILE_NAME);
+		} catch (FileNotFoundException e) {
+			emp.printLineMsg("" + this, "failed to load from configuration file");
+			e.printStackTrace();
+		}
+		configJO = config.getConfig();
+//		String configFile = getFileContent(CONFIG_FILE_NAME, "ascii");
+//		configJO = (JsonObject)(new JsonParser()).parse(configFile);
 
 		//load date format
-		DateFormat dateFormat = new SimpleDateFormat(configJO.get(JSON_DATE_FORMAT).getAsString());
-		dateString = dateFormat.format(calendar.getTime());
+//		DateFormat dateFormat = new SimpleDateFormat(configJO.get(JSON_DATE_FORMAT).getAsString());
+		dateString = config.getDateFormat().format(calendar.getTime());
 		
 		//if data folder not exist, create one
-		makeTodayDirectory(configJO.get(JSON_FOLDER_NAME).getAsString());
+		makeTodayDirectory(config.getRootDir());
 		
 		//get base url
 		baseURL = configJO.get(JSON_BASE_URL).getAsString();
@@ -486,86 +499,5 @@ public class YahooRssScraper {
 			this.categoryName = categoryName;
 		}
 	}
-	
-	/*
-	 * The schema of the data that will be stored in database
-	 */
-	private class NewsData{
-		public String title;
-		public String date;
-		public String imgAlt;
-		public String imgTitle;
-		public String content;
-		public String category;
-		public String subCategory;
-		public String url;
-		public String source;
-		
-		public NewsData(String category, String subCategory, String title, String date){
-			imgAlt = "";
-			content = "";
-			imgTitle = "";
-			url = "";
-			source = "";
-			this.category = category;
-			this.subCategory = subCategory;
-			this.title = title;
-			this.date = date;
-		}
-		
-		/**
-		 * 
-		 * @return a JSONObject contains all the fields of this class
-		 */
-		public JSONObject toJSONObject(){
-			JSONObject jObject = new JSONObject();
-			try {
-				Field[] fields = this.getClass().getFields();
-				for(Field field : fields){
-					jObject.put(field.getName(), field.get(this));
-				}
-			} catch (JSONException e) {
-				e.printStackTrace();
-			} catch (SecurityException e) {
-				e.printStackTrace();
-			}catch (IllegalArgumentException e) {
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			}
-			
-			return jObject;
-		}
-		
-		/**
-		 * returns this object as json string
-		 * @return the json string that represents this object
-		 */
-		public String toJsonString(){
-			StringBuilder sb = new StringBuilder();
-			sb.append("{");
-			Field[] fields = this.getClass().getFields();
-			String seperator = ", ";
-			try {
-				for(Field field : fields){
-					sb.append("\""+ field.getName() + "\"");
-					sb.append(":");
-					sb.append("\"" + field.get(this).toString().replace("\"", "\\\"") + "\"");
-					sb.append(seperator);
-				}
-			} catch (IllegalArgumentException e) {
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			}
-			sb.delete(sb.length() - seperator.length(), sb.length());
-			sb.append("}");
-			return sb.toString();
-		}
-		
-	}
-	
-	
-	
 	
 }

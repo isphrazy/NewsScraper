@@ -1,4 +1,4 @@
-package edu.washington.cs.NewsScraper;
+package knowitall.reverbovernews;
 
 import java.io.BufferedWriter;
 import java.io.File;

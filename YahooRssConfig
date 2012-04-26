@@ -1,5 +1,5 @@
 {
-"folder-name":"./yahoo_data/",
+"folder-name":"yahoo_data/",
 "rss-url":"http://news.yahoo.com/rss/",
 "category":["US", "BUSINESS", "WORLD", "ENTERTAINMENT", "SPORTS", "TECH", "POLITICS", "SCIENCE", "HEALTH"],
 "rss-list":{

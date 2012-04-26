@@ -2,17 +2,24 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>edu.washington.cs.NewsScraper</groupId>
-  <artifactId>NewsScraper</artifactId>
-  <version>0.9</version>
+  <groupId>knowitall</groupId>
+  <artifactId>reverb-overnews</artifactId>
+  <version>1.0</version>
   <packaging>jar</packaging>
 
-  <name>NewsScraper</name>
+  <name>reverb-overnews</name>
   <url>http://maven.apache.org</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+  
+  <repositories>
+    <repository>
+      <id>knowitall</id>
+      <url>http://knowitall.cs.washington.edu/maven2</url>
+    </repository>
+  </repositories>
   
   <dependencies>
 	<dependency>
@@ -57,12 +64,17 @@
 		<groupId>org.json</groupId>
 		<artifactId>json</artifactId>
 		<version>20090211</version>
-	</dependency>	
+	</dependency>
+	<dependency>
+      <groupId>edu.washington.cs.knowitall</groupId>
+      <artifactId>reverb-core</artifactId>
+      <version>1.3.0</version>
+    </dependency>	
   </dependencies>
   
   <build>
-	  <plugins>
-		  <plugin>
+	<plugins>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
@@ -86,5 +98,5 @@
         </configuration>
       </plugin>
     </plugins>
-	</build>
+  </build>
 </project>
