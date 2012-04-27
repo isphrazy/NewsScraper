@@ -93,8 +93,8 @@ public class YahooRssScraper {
 		
 		loadConfig();
 
-//		if(sourceDir == null)
-//			fetchData();
+		if(sourceDir == null)
+			fetchData();
 		
 		if(processData){
 			if(sourceDir == null)

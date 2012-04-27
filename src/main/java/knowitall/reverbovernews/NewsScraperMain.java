@@ -37,18 +37,18 @@ public class NewsScraperMain {
 //    	System.out.println(cmd.h.getOptionValues(FETCH_DATA_ONLY));
     	
     	
-//    	if(args.length > 0){
-//    		int argsLength = args.length;
-//    		if(argsLength == 1 && args[0].equals(FETCH_DATA_ONLY))
-//    			fetchYahooRSS(false, null, null);
-//    		else if(argsLength == 3 && args[0].equals(PROCESS_RSS_WITH_GIVEN_DIR))
-//    			fetchYahooRSS(true, args[1], args[2]);
-//    		else{
-//    			System.out.println("invalid input argument number");
-//    		}
-//    	}else{
-//    		fetchYahooRSS(true, null, null);
-//    	}
+    	if(args.length > 0){
+    		int argsLength = args.length;
+    		if(argsLength == 1 && args[0].equals(FETCH_DATA_ONLY))
+    			fetchYahooRSS(false, null, null);
+    		else if(argsLength == 3 && args[0].equals(PROCESS_RSS_WITH_GIVEN_DIR))
+    			fetchYahooRSS(true, args[1], args[2]);
+    		else{
+    			System.out.println("invalid input argument number");
+    		}
+    	}else{
+    		fetchYahooRSS(true, null, null);
+    	}
     	
     	reverbExtract(cmd.getOptionValues(USE_REVERB_WITH_DIR));
     	

@@ -122,6 +122,7 @@ public class ReverbNewsExtractor {
 	}
 
 	private void extractData(String newsData) {
+		
 		System.out.println("start extracting data");
 		Gson gson = new Gson();
 		HashMap<Long, ExtractedNewsData> map = gson.fromJson(newsData, new TypeToken<HashMap<Long, ExtractedNewsData>>(){}.getType());
@@ -148,9 +149,9 @@ public class ReverbNewsExtractor {
 		
 		String jsonDataDir = targetDir + dateString + "_ExtractedData.revnews";
 		String readableDataDir = targetDir + dateString + "_readable.txt";
-		System.out.println("storing in " + jsonDataDir + " and " + readableDataDir);
+		System.out.println("storing in " + jsonDataDir);
 		File jsonDataFile = new File(jsonDataDir);
-		File readableFile = new File(readableDataDir);
+//		File readableFile = new File(readableDataDir);
 		
 		try {
 			jsonDataFile.createNewFile();
@@ -160,11 +161,13 @@ public class ReverbNewsExtractor {
 			StringBuilder sb = new StringBuilder();
 			sb.append("{");
 			String seperator = ", ";
+			boolean empty = true;
 			while(it.hasNext()){
+				empty = false;
 				Map.Entry<Long, ExtractedNewsData> pair = (Map.Entry<Long, ExtractedNewsData>)it.next();
 				sb.append("\"" + pair.getKey() + "\": " + pair.getValue().toJsonString() + seperator);
 			}
-			sb.delete(sb.length() - seperator.length(), sb.length());
+			if(!empty) sb.delete(sb.length() - seperator.length(), sb.length());
 			sb.append("}");
 			out.write(sb.toString());
 			out.close();

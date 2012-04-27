@@ -77,10 +77,13 @@ public class NewsData{
 		String seperator = ", ";
 		try {
 			for(Field field : fields){
-				sb.append("\""+ field.getName() + "\"");
-				sb.append(":");
-				sb.append("\"" + field.get(this).toString().replace("\"", "\\\"") + "\"");
-				sb.append(seperator);
+				String fieldName = field.getName();
+				if(!fieldName.equals("extractions")){
+					sb.append("\""+ field.getName() + "\"");
+					sb.append(":");
+					sb.append("\"" + field.get(this).toString().replace("\"", "\\\"") + "\"");
+					sb.append(seperator);
+				}
 			}
 		} catch (IllegalArgumentException e) {
 			e.printStackTrace();
