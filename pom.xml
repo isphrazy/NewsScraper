@@ -89,7 +89,7 @@
 		<configuration>
           <archive>
 			  <manifest>
-              <mainClass>edu.washington.cs.NewsScraper.NewsScraperMain</mainClass>
+              <mainClass>knowitall.reverbovernews.NewsScraperMain</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>

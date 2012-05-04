@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import edu.washington.cs.knowitall.extractor.conf.ReVerbConfFunction;
 import edu.washington.cs.knowitall.nlp.extraction.ChunkedBinaryExtraction;
 
 public class ExtractedNewsData extends NewsData{
@@ -33,13 +34,16 @@ public class ExtractedNewsData extends NewsData{
 		sb.append("\"extractions\":[");
 		Iterator<Entry<String, ChunkedBinaryExtraction>> it = extractions.entrySet().iterator();
 		boolean empty = true;
+		ReVerbConfFunction confFunc = new ReVerbConfFunction();
 		while(it.hasNext()){
 			empty = false;
 			Map.Entry<String, ChunkedBinaryExtraction> pairs = (Map.Entry<String, ChunkedBinaryExtraction>)it.next();
 			sb.append("\n\t\t\t{\"sent\":\"" + pairs.getKey().replace("\"", "\\\"") + "\", \n");
-			sb.append("\t\t\t\"arg1\":\"" + pairs.getValue().getArgument1().toString().replace("\"", "\\\"") + "\", \n");
-			sb.append("\t\t\t\"relation\":\"" + pairs.getValue().getRelation().toString().replace("\"", "\\\"") + "\", \n");
-			sb.append("\t\t\t\"arg2\":\"" + pairs.getValue().getArgument2().toString().replace("\"", "\\\"") + "\"},");
+			ChunkedBinaryExtraction cbe = pairs.getValue();
+			sb.append("\t\t\t\t\"arg1\":\"" + cbe.getArgument1().toString().replace("\"", "\\\"") + "\", \n");
+			sb.append("\t\t\t\t\"relation\":\"" + cbe.getRelation().toString().replace("\"", "\\\"") + "\", \n");
+			sb.append("\t\t\t\t\"arg2\":\"" + cbe.getArgument2().toString().replace("\"", "\\\"") + "\", \n");
+			sb.append("\t\t\t\t\"confidence\":\"" + confFunc.getConf(cbe) + "\"},");
 		}
 		if(!empty) sb.deleteCharAt(sb.length() - 1);
 		sb.append("]");

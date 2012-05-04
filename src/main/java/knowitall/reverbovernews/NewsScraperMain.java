@@ -1,12 +1,11 @@
 package knowitall.reverbovernews;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
@@ -22,72 +21,61 @@ public class NewsScraperMain {
 	
 	private static final String YAHOO_CONFIG_FILE = "YahooRssConfig";
 	
-	private static final String FETCH_DATA_ONLY = "s";
-	private static final String PROCESS_RSS_WITH_GIVEN_DIR = "d";
+	private static final String FETCH_DATA_ONLY = "f";
+	private static final String FETCH_DATA_AND_PROCESS_DATA = "fp";
+	private static final String PROCESS_RSS_WITH_GIVEN_DIR = "p";
 	private static final String USE_REVERB = "r";
 	private static final String USE_REVERB_WITH_DIR = "rd";
+	private static final String HELP = "h";
 	
 	private static Calendar calendar;
+	private static Options options;
 	
     public static void main( String[] args ) throws IOException{
     	
     	calendar = Calendar.getInstance();
     	
-    	CommandLine cmd = getCommands(args);
-//    	System.out.println(cmd.h.getOptionValues(FETCH_DATA_ONLY));
+    	options = new Options();
+    	CommandLine cmd = getCommands(args, options);
     	
-    	
-    	if(args.length > 0){
-    		int argsLength = args.length;
-    		if(argsLength == 1 && args[0].equals(FETCH_DATA_ONLY))
-    			fetchYahooRSS(false, null, null);
-    		else if(argsLength == 3 && args[0].equals(PROCESS_RSS_WITH_GIVEN_DIR))
-    			fetchYahooRSS(true, args[1], args[2]);
-    		else{
-    			System.out.println("invalid input argument number");
-    		}
-    	}else{
-    		fetchYahooRSS(true, null, null);
+    	if (cmd.hasOption(FETCH_DATA_ONLY)){//only fetch data from internet, not process the raw data
+    		fetchYahooRSS(true, false, null);
+    	}else if(cmd.hasOption(FETCH_DATA_AND_PROCESS_DATA)){
+    		fetchYahooRSS(true, true, null);
+    	}else if(cmd.hasOption(PROCESS_RSS_WITH_GIVEN_DIR)){
+    		fetchYahooRSS(false, true, cmd.getOptionValues(PROCESS_RSS_WITH_GIVEN_DIR));
     	}
     	
-    	reverbExtract(cmd.getOptionValues(USE_REVERB_WITH_DIR));
+    	if(cmd.hasOption(USE_REVERB)){
+    		reverbExtract(null);
+    	}else if(cmd.hasOption(USE_REVERB_WITH_DIR)){
+    		String[] dirs = cmd.getOptionValues(USE_REVERB_WITH_DIR);
+    		reverbExtract(dirs);
+    	}
+    	
+    	if(cmd.hasOption(HELP)){
+    		printUsage();
+    	}
     	
     }
     
-    private static void reverbExtract(String[] optionValues) {
+    /*
+     * extract fetched data.
+     * if the direction is null, extract the file in default folder(today's folder)
+     * else fetch the data from the directory specified by the first element, 
+     * and store the result in the directory specified by the second element.
+     */
+    private static void reverbExtract(String[] dir) {
+    	
     	ReverbNewsExtractor rne = new ReverbNewsExtractor(calendar, YAHOO_CONFIG_FILE);
-//    	rne.exp();
-    	rne.extract(null, null);
+    	if(dir == null)
+    		rne.extract(null, null);
+    	else if(dir.length == 2 && dir[0] != null && dir[1] != null)
+    		rne.extract(dir[0], dir[1]);
+    	else
+    		printUsage();
 	}
-
-	private static CommandLine getCommands(String[] args) {
-    	
-    	Option fetchDataOnlyOp = new Option(FETCH_DATA_ONLY, false, 
-    			"only fetch rss, not processing it");
-    	
-    	Option processWithDirOp = new Option(PROCESS_RSS_WITH_GIVEN_DIR, false, 
-    			"process rss in first arg and save it to second arg");
-    	
-    	Option useReverbOp = new Option(USE_REVERB, false, 
-    			"use reverb to extract today's file");
-    	
-    	Option useReverbWithDirOp = new Option(USE_REVERB_WITH_DIR, false,
-    			"use reverb to extract files in the first arg and save it into second arg");
-    	
-        Options options = new Options();
-        options.addOption(fetchDataOnlyOp);
-        options.addOption(processWithDirOp);
-        options.addOption(useReverbOp);
-        options.addOption(useReverbWithDirOp);
-        CommandLineParser parser = new PosixParser();
-        CommandLine cmd = null;
-        try {
-			cmd = parser.parse(options, args);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-        return cmd;
-	}
+    
 
 	/*
      * fetch rss from yahoo, store(and/or process it) and store in local file
@@ -95,33 +83,70 @@ public class NewsScraperMain {
      * the second argument is the directory where the html is stored, if it's null, 
      * use today's directory
      */
-	private static void fetchYahooRSS(boolean proc, String sourceDir, String targetDir) throws IOException {
-		
+	private static void fetchYahooRSS(boolean fetchData, boolean proc, String[] dirs) throws IOException {
 		YahooRssScraper yrs = new YahooRssScraper(calendar);
-		yrs.scrape(proc, sourceDir, targetDir);
+		if(fetchData && !proc && dirs == null){//fetch data only
+			yrs.scrape(true, false, null, null);
+		}else if(fetchData && proc && dirs == null){//fetch data and then process it
+			yrs.scrape(true, true, null, null);
+		}else if(!fetchData && proc && dirs.length == 2 
+				&& dirs[0] != null && dirs[1] != null){//process data in the given dir
+			
+			yrs.scrape(false, true, dirs[0], dirs[1]);
+		}else{
+			printUsage();
+		}
 		
 	}
-    
+
     /*
-     * get today's date
+     * setup the comman line options and parse passed in string array
      */
-    private static void getDate() {
-		DateFormat dateFormat = new SimpleDateFormat("MM_dd_yyyy");
-		calendar = Calendar.getInstance();
-	}
+	private static CommandLine getCommands(String[] args, Options options) {
+    	
+    	Option fetchDataOnlyOp = new Option(FETCH_DATA_ONLY, false, 
+    			"fetch the rss(without processing it)");
 
-
-	/*
-	 * create a hashcode for the given string
-	 */
-	private static long createId(String title){
-		long hash = 7;
-		int prime = 31;
-		for(int i = 0; i < title.length(); i++){
-			hash = hash * prime + title.charAt(i);
+    	Option fecthDataAndProcessData = new Option(FETCH_DATA_AND_PROCESS_DATA, false, 
+    			"fetch rss, then process it");
+    	
+    	Option processWithDirOp = new Option(PROCESS_RSS_WITH_GIVEN_DIR, false, 
+    			"process rss only, the first arg is the source directory, the second dir is the target direcotory to save data");
+    	processWithDirOp.setArgs(2);
+    	
+    	Option useReverbOp = new Option(USE_REVERB, false, 
+    			"use reverb to extract today's file");
+    	
+    	Option useReverbWithDirOp = new Option(USE_REVERB_WITH_DIR, false,
+    			"use reverb to extract files in the first arg and save it into second arg");
+    	useReverbWithDirOp.setArgs(2);
+    	
+    	Option helpOp = new Option(HELP, false,
+    			"print program usage");
+    	
+        options.addOption(fetchDataOnlyOp);
+        options.addOption(fecthDataAndProcessData);
+        options.addOption(processWithDirOp);
+        options.addOption(useReverbOp);
+        options.addOption(useReverbWithDirOp);
+        options.addOption(helpOp);
+        CommandLineParser parser = new PosixParser();
+        CommandLine cmd = null;
+        try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			printUsage();
 		}
-		return hash;
+        return cmd;
 	}
-
-   
+	
+	/*
+	 * print the option usage and exit
+	 */
+	private static void printUsage(){
+		HelpFormatter f = new HelpFormatter();
+		f.printHelp("options:", options);
+		System.exit(1);
+	}
+	
 }

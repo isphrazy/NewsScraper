@@ -7,10 +7,6 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Field;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -21,8 +17,6 @@ import java.util.Scanner;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -31,7 +25,6 @@ import org.jsoup.select.Elements;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 /**
  * this class fetch the rss data from yahoo, and instore the metadata to the database
@@ -44,14 +37,13 @@ public class YahooRssScraper {
 	private final String JSON_BASE_URL = "rss-url";
 	private final String JSON_CATEGORY_LIST = "category";
 	private final String JSON_RSS_LIST = "rss-list";
-	private final String JSON_FOLDER_NAME = "folder-name";
 	private final String JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT = "sentence-minimum-length";
-	private final String JSON_DATE_FORMAT = "date-format";
 	private final String ID_COUNT_FILE_NAME = "idCount";
 	private final String OUTPUT_DATABASE_NAME = "yahoo_rss.data";
 	private final String TAG_LINK = "<link />";
 	private final String TAG_SOURCE = "</source>";
 	private final String REUTERS_KEYWORD = "(Reuters) - ";
+	private final String HEALTHYDAY_KEYWORD = "(HealthDay News) -- ";
 	private final String LINK_GARBAGE_TAIL = "\n";
 	private final String GARBAGE_TAIL = "...";
 	private final String USELESS_CONTENT_INDICATOR = "[...]";
@@ -85,22 +77,22 @@ public class YahooRssScraper {
 	
 	/**
 	 * 
+	 * @param fetchData TODO
 	 * @param processData if this is true, the data fetched online will be processed and stored
 	 * to database, otherwise only the fetched data will be saved
 	 * @param sourceDir tells where the html will be scraped is stored; if it's null, use today's directory
 	 */
-	public void scrape(boolean processData, String sourceDir, String targetDir){
+	public void scrape(boolean fetchData, boolean processData, String sourceDir, String targetDir){
 		
 		loadConfig();
 
-		if(sourceDir == null)
+		if(fetchData)
 			fetchData();
 		
 		if(processData){
-			if(sourceDir == null)
+			if(sourceDir == null && targetDir == null)
 				processHtml(rawDataDir);
-			
-			else{
+			else if(sourceDir != null && targetDir != null){
 				todayFolderLocation = targetDir.trim();
 				if(!todayFolderLocation.endsWith(FOLDER_PATH_SEPERATOR))todayFolderLocation += FOLDER_PATH_SEPERATOR;
 				File locationFile = new File(todayFolderLocation);
@@ -109,6 +101,8 @@ public class YahooRssScraper {
 					emp.printLineMsg("" + this, "failed to create target folder");
 				
 				processHtml(sourceDir);
+			}else{
+				throw new IllegalArgumentException();
 			}
 			outputDataBase();
 		}
@@ -119,7 +113,7 @@ public class YahooRssScraper {
 	 * output the map data to database in json format
 	 */
 	private void outputDataBase() {
-		System.out.println("start to output data");
+		System.out.println("start to output news data");
 		
 		//load id number from last time
 		long prevCount;
@@ -177,6 +171,7 @@ public class YahooRssScraper {
 			emp.printLineMsg("" + this, "can't increase id count");
 			e.printStackTrace();
 		}
+		System.out.println("finished outputing news data");
         
 	}
 
@@ -349,6 +344,9 @@ public class YahooRssScraper {
 		//get rid of the leading publisher info
 		int pubSep = paraText.indexOf(REUTERS_KEYWORD);
 		if(pubSep >= 0) paraText = paraText.substring(pubSep + REUTERS_KEYWORD.length());
+		
+		int HealthyDayPos = paraText.indexOf(HEALTHYDAY_KEYWORD);
+		if(HealthyDayPos >= 0) paraText = paraText.substring(HealthyDayPos + HEALTHYDAY_KEYWORD.length());
 		
 		if(paraText.endsWith(GARBAGE_TAIL)){
 			//get rid of the "..." at the end of the content
