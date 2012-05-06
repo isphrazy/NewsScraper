@@ -1,8 +1,14 @@
 quick use:
 
-without any argument: fetch the data online, then process the data and store to database
--s: fetch the data only
--d [directory of xml file wants to process], [directory of output files], not fetch any data online, but process the files in the given directory
+usage: options:
+ -f          fetch the rss(without processing it)
+ -fp         fetch rss, then process it
+ -h          print program usage
+ -p <arg>    process rss only, the first arg is the source directory, the
+             second dir is the target direcotory to save data
+ -r          use reverb to extract today's file
+ -rd <arg>   use reverb to extract files in the first arg and save it into
+             second arg
 
 YahooRssConfig file contains the configruation info about parsing the Yahoo RSS.
 

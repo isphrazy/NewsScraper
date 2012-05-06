@@ -57,11 +57,12 @@ public class YahooRssScraper {
 	private ErrorMessagePrinter emp;
 	private String baseURL;
 	private List<RssCategory> rssCategoryList;
-	private String todayFolderLocation;
+	private String outputLocation;
 	private String rawDataDir;
 	private Map<String, NewsData> dataMap;
 	private int sentenceMinimumLengthRequirement;
 	private Set<String> duplicateChecker;
+	private boolean ignoreDate;
 	
 	/**
 	 * constructor
@@ -73,6 +74,7 @@ public class YahooRssScraper {
 		
 		rssCategoryList = new ArrayList<RssCategory>();
 		duplicateChecker = new HashSet<String>();
+		ignoreDate = false;
 	}
 	
 	/**
@@ -93,13 +95,13 @@ public class YahooRssScraper {
 			if(sourceDir == null && targetDir == null)
 				processHtml(rawDataDir);
 			else if(sourceDir != null && targetDir != null){
-				todayFolderLocation = targetDir.trim();
-				if(!todayFolderLocation.endsWith(FOLDER_PATH_SEPERATOR))todayFolderLocation += FOLDER_PATH_SEPERATOR;
-				File locationFile = new File(todayFolderLocation);
+				outputLocation = targetDir.trim();
+				if(!outputLocation.endsWith(FOLDER_PATH_SEPERATOR))outputLocation += FOLDER_PATH_SEPERATOR;
+				File locationFile = new File(outputLocation);
 				locationFile.mkdirs();
 				if(!locationFile.exists())
 					emp.printLineMsg("" + this, "failed to create target folder");
-				
+				ignoreDate = true;
 				processHtml(sourceDir);
 			}else{
 				throw new IllegalArgumentException();
@@ -132,11 +134,11 @@ public class YahooRssScraper {
 		
 		try {
 
-			String dataLocation = todayFolderLocation + "data/";
+			String dataLocation = outputLocation + "data/";
 			File f = new File(dataLocation);
 			f.mkdirs();
 			
-			String rssData = dataLocation + dateString + "_" + OUTPUT_DATABASE_NAME;
+			String rssData = dataLocation + (ignoreDate ? "" : dateString) + "_" + OUTPUT_DATABASE_NAME;
 			File dataFile = new File(rssData);
 			dataFile.createNewFile();
 			
@@ -148,7 +150,9 @@ public class YahooRssScraper {
 				sb.append("\"" + currentCount++ + "\": " + dataMap.get(title).toJsonString() + seperator);
 			}
 			//fense post problem
-			sb.delete(sb.length() - seperator.length(), sb.length());
+			if(!dataMap.isEmpty())
+				sb.delete(sb.length() - seperator.length(), sb.length());
+			
 			sb.append("}");
 			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),ENCODE));
 			out.write(sb.toString());
@@ -204,7 +208,7 @@ public class YahooRssScraper {
 			for(Element item : items){
 				try{
 					String pubdate = item.getElementsByTag("pubdate").first().text();
-					if(pubdate.substring(0, 10).equals(dateString)){
+					if(pubdate.substring(0, 10).equals(dateString) || ignoreDate){
 						
 						//get news' title
 						Element titleEle = item.getElementsByTag("title").first();
@@ -436,7 +440,7 @@ public class YahooRssScraper {
 			rc.rssList = new Gson().fromJson(rssList.get(categoryName), String[].class);
 		}
 		sentenceMinimumLengthRequirement = configJO.get(JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT).getAsInt();
-		rawDataDir = todayFolderLocation + "raw_data/";
+		rawDataDir = outputLocation + "raw_data/";
 		
 	}
 
@@ -450,8 +454,8 @@ public class YahooRssScraper {
 		emp = ErrorMessagePrinter.getInstance(dataFolderLoction, calendar);
 		
 		//if today's folder not exist, create one
-		todayFolderLocation = dataFolderLoction + dateString + "/";
-		File todayFolder = new File(todayFolderLocation);
+		outputLocation = dataFolderLoction + dateString + "/";
+		File todayFolder = new File(outputLocation);
 		todayFolder.mkdir();
 		
 		//if the folder is not created

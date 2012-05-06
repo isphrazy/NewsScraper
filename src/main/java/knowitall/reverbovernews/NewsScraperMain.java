@@ -38,24 +38,29 @@ public class NewsScraperMain {
     	options = new Options();
     	CommandLine cmd = getCommands(args, options);
     	
-    	if (cmd.hasOption(FETCH_DATA_ONLY)){//only fetch data from internet, not process the raw data
-    		fetchYahooRSS(true, false, null);
-    	}else if(cmd.hasOption(FETCH_DATA_AND_PROCESS_DATA)){
-    		fetchYahooRSS(true, true, null);
-    	}else if(cmd.hasOption(PROCESS_RSS_WITH_GIVEN_DIR)){
-    		fetchYahooRSS(false, true, cmd.getOptionValues(PROCESS_RSS_WITH_GIVEN_DIR));
+    	if (cmd.getOptions().length == 0){
+    	    printUsage();
+    	}else{
+    	    if (cmd.hasOption(FETCH_DATA_ONLY)){//only fetch data from internet, not process the raw data
+    	        fetchYahooRSS(true, false, null);
+    	    }else if(cmd.hasOption(FETCH_DATA_AND_PROCESS_DATA)){
+    	        fetchYahooRSS(true, true, null);
+    	    }else if(cmd.hasOption(PROCESS_RSS_WITH_GIVEN_DIR)){
+    	        fetchYahooRSS(false, true, cmd.getOptionValues(PROCESS_RSS_WITH_GIVEN_DIR));
+    	    }
+    	    
+    	    if(cmd.hasOption(USE_REVERB)){
+    	        reverbExtract(null);
+    	    }else if(cmd.hasOption(USE_REVERB_WITH_DIR)){
+    	        String[] dirs = cmd.getOptionValues(USE_REVERB_WITH_DIR);
+    	        reverbExtract(dirs);
+    	    }
+
+    	    if(cmd.hasOption(HELP)){
+    	        printUsage();
+    	    }
     	}
     	
-    	if(cmd.hasOption(USE_REVERB)){
-    		reverbExtract(null);
-    	}else if(cmd.hasOption(USE_REVERB_WITH_DIR)){
-    		String[] dirs = cmd.getOptionValues(USE_REVERB_WITH_DIR);
-    		reverbExtract(dirs);
-    	}
-    	
-    	if(cmd.hasOption(HELP)){
-    		printUsage();
-    	}
     	
     }
     
