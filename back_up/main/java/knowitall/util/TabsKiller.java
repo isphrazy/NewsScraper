@@ -63,7 +63,7 @@ public class TabsKiller {
             Scanner scanner = new Scanner(f);
             StringBuilder sb = new StringBuilder();
             while(scanner.hasNext()){
-                sb.append(scanner.nextLine().replace("\t", "    "));
+                sb.append(scanner.nextLine().replace("\t", "    ") + "\n");
             }
             scanner.close();
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f),"UTF-8"));

@@ -14,8 +14,8 @@
 	"HEALTH":["health", "sexual-health", "medications-drugs", "parenting-kids", "seniors-aging", "diseases-conditions", "vitality"]
 },
 "sentence-minimum-length":15,
-"date-format":"yyyy-MM-dd",
 "extracted_data_suffix":"revnews",
 "extracted_data_dir":"extracted_data",
-"extracted_readable_data":"extracted_readable_data"
+"extracted_readable_data":"extracted_readable_data",
+"formatted_extracted_data_dir":"formatted/"
 }

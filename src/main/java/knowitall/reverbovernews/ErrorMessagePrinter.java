@@ -16,53 +16,53 @@ import java.util.Calendar;
  *
  */
 public class ErrorMessagePrinter {
-	
-	private static ErrorMessagePrinter instance;
-	private static FileWriter errorLog;
-	private static String folderName;
-	private static Calendar calendar;
-	private static String dateString;
-	
-	//singleton
-	private ErrorMessagePrinter(){}
-	
-	/**
-	 * returns the instance of this class
-	 * @param location where the error log file will be stored
-	 * @param cal gives the current time
-	 * @return the instance
-	 */
-	public static ErrorMessagePrinter getInstance(String location, Calendar cal){
-		if(instance == null){
-			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-			calendar = cal;
-			dateString = dateFormat.format(calendar.getTime());
-			
-			instance = new ErrorMessagePrinter();
-			folderName = location + "error.log";
-		}
-		return instance;
-		
-	}
-	
-	/**
-	 * this method will print the given strong to error log
-	 * @param methodName where is this method being called
-	 * @param msg the message will be print to file
-	 */
-	public void printLineMsg(String methodName, String msg){
-		try {
-			File errorFile = new File(folderName);
-			
-			//if error file not exist, create one
-			if(!errorFile.exists()) errorFile.createNewFile();
-			
-			errorLog = new FileWriter(folderName, true);
-			BufferedWriter out = new BufferedWriter(errorLog);
-	        out.write(dateString + ": " + methodName + ": " + msg + "\n");
-	        out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+    
+    private static ErrorMessagePrinter instance;
+    private static FileWriter errorLog;
+    private static String folderName;
+    private static Calendar calendar;
+    private static String dateString;
+    
+    //singleton
+    private ErrorMessagePrinter(){}
+    
+    /**
+     * returns the instance of this class
+     * @param location where the error log file will be stored
+     * @param cal gives the current time
+     * @return the instance
+     */
+    public static ErrorMessagePrinter getInstance(String location, Calendar cal){
+        if(instance == null){
+            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            calendar = cal;
+            dateString = dateFormat.format(calendar.getTime());
+            
+            instance = new ErrorMessagePrinter();
+            folderName = location + "error.log";
+        }
+        return instance;
+        
+    }
+    
+    /**
+     * this method will print the given strong to error log
+     * @param methodName where is this method being called
+     * @param msg the message will be print to file
+     */
+    public void printLineMsg(String methodName, String msg){
+        try {
+            File errorFile = new File(folderName);
+            
+            //if error file not exist, create one
+            if(!errorFile.exists()) errorFile.createNewFile();
+            
+            errorLog = new FileWriter(folderName, true);
+            BufferedWriter out = new BufferedWriter(errorLog);
+            out.write(dateString + ": " + methodName + ": " + msg + "\n");
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
