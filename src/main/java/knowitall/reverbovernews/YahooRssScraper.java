@@ -60,6 +60,7 @@ public class YahooRssScraper {
     private String outputLocation;
     private String rawDataDir;
     private Map<String, NewsData> dataMap;
+//    private List<SimpleNewsData> simpleDataMap;
     private int sentenceMinimumLengthRequirement;
     private Set<String> duplicateChecker;
     private boolean ignoreDate;
@@ -75,11 +76,13 @@ public class YahooRssScraper {
         rssCategoryList = new ArrayList<RssCategory>();
         duplicateChecker = new HashSet<String>();
         ignoreDate = false;
+        dataMap = new HashMap<String, NewsData>();
+//        simpleDataMap = new ArrayList<SimpleNewsData>();
     }
     
     /**
      * 
-     * @param fetchData TODO
+     * @param fetchData indicates whether use wants to fetch data online
      * @param processData if this is true, the data fetched online will be processed and stored
      * to database, otherwise only the fetched data will be saved
      * @param sourceDir tells where the html will be scraped is stored; if it's null, use today's directory
@@ -102,6 +105,7 @@ public class YahooRssScraper {
                 if(!locationFile.exists())
                     emp.printLineMsg("" + this, "failed to create target folder");
                 ignoreDate = true;
+                
                 processHtml(sourceDir);
             }else{
                 throw new IllegalArgumentException();
@@ -138,7 +142,7 @@ public class YahooRssScraper {
             File f = new File(dataLocation);
             f.mkdirs();
             
-            String rssData = dataLocation + (ignoreDate ? "" : dateString) + "_" + OUTPUT_DATABASE_NAME;
+            String rssData = dataLocation + dateString + "_" + OUTPUT_DATABASE_NAME;
             File dataFile = new File(rssData);
             dataFile.createNewFile();
             
@@ -189,13 +193,22 @@ public class YahooRssScraper {
         if(!dir.endsWith("/")) dir = dir + "/";
         
         System.out.println("start processing html");
-        dataMap = new HashMap<String, NewsData>();
+
         File rawDataFile = new File(dir);
         String[] files = rawDataFile.list();
+        
+        if(ignoreDate){
+            String fileDate = getFileDate(files[0]);
+            if(fileDate != null)
+                dateString = fileDate;
+        }
+        
         for(String fileName : files){
-            int seperatorPos = fileName.indexOf('_');
-            String categoryName = fileName.substring(0, seperatorPos);
-            String rssName = fileName.substring(seperatorPos + 1, fileName.indexOf('.'));
+            
+            int timeSeperatorPos = fileName.indexOf('_');
+            int catSeperatorPos = fileName.indexOf('_', timeSeperatorPos + 1);
+            String categoryName = fileName.substring(timeSeperatorPos + 1, catSeperatorPos);
+            String rssName = fileName.substring(catSeperatorPos + 1, fileName.indexOf('.'));
             
             //read rss file from local disk
             String fileContent = getFileContent(dir + fileName, ENCODE);
@@ -224,10 +237,11 @@ public class YahooRssScraper {
                             Element para = desc.getElementsByTag("p").first();
 //                        
                             NewsData data = new NewsData(categoryName, rssName, title, dateString);
-//                        
                             getURL(item, data);
                             
                             getSource(item, data);
+                            
+                            getImageUrl(item, data);
                             
                             if(para == null){//description has no child tag "p"
                                 
@@ -256,7 +270,8 @@ public class YahooRssScraper {
                                 try{
                                     //process image info
                                     Element img = para.getElementsByTag("a").first().getElementsByTag("img").first();
-                                    
+                                    if(data.imgUrl.length() < 1)
+                                        data.imgUrl = img.attr("src");
                                     String imgAlt = img.attr("alt").trim();
                                     if(imgAlt.length() > sentenceMinimumLengthRequirement
                                             && !duplicateChecker.contains(imgAlt)){
@@ -274,6 +289,7 @@ public class YahooRssScraper {
                                     System.out.println(categoryName + ": " + rssName + ": " + title + " ----- has no image");
                                 }
                                 dataMap.put(title, data);
+//                                simpleDataMap.add(sData);
                             }
                         }
                     }
@@ -286,6 +302,34 @@ public class YahooRssScraper {
         System.out.println("end processing html");
     }
 
+
+    private String getFileDate(String fileName) {
+        try{
+            return fileName.substring(0, 10);
+        }catch (Exception e){
+            return null;
+        }
+    }
+
+    private void getImageUrl(Element item, NewsData data) {
+        Elements allElements = item.getAllElements();
+        for(Element element : allElements){
+            if(element.tagName().equals("media:text")){
+                Element content = Jsoup.parse(StringEscapeUtils.unescapeHtml4(element.toString()));
+                Elements allContent = content.getAllElements();
+                for(Element c : allContent){
+                    if(c.tagName().equals("img")){
+                        String imageUrl = element.attr("src");
+                        if(imageUrl != null && imageUrl.length() > 0 ){
+                            System.out.println(imageUrl);
+                            data.imgUrl = imageUrl;
+                            break;
+                        }
+                    }                    
+                }
+            }
+        }
+    }
 
     /*
      * gets the source of given ite, then store it in data
@@ -379,9 +423,7 @@ public class YahooRssScraper {
                     Document doc = Jsoup.connect(baseURL + rssName).get();
                     
                     //write fetched xml to local data
-//                    FileWriter fstream = new FileWriter(rawDataDir + rCat.categoryName + "_" + rssName + ".html", true);
-//                    BufferedWriter out = new BufferedWriter(fstream);
-                    BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rawDataDir + rCat.categoryName + "_" + rssName + ".html"), true),ENCODE));
+                    BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rawDataDir + dateString + "_" + rCat.categoryName + "_" + rssName + ".html"), true),ENCODE));
                     out.write(doc.toString());
                     out.close();
                     

@@ -13,18 +13,27 @@ public class FormattedNewsData {
     public String category;
     public double confidence;
     
+    /**
+     * print this object's fields separated by \t
+     */
     public String toString(){
         StringBuilder sb = new StringBuilder();
+        sb.append(killTab(arg1) + "\t");
+        sb.append(killTab(relation) + "\t");
+        sb.append(killTab(arg2) + "\t");
+        sb.append(confidence + "\t");
+        sb.append(killTab(sentence) + "\t");
         sb.append(killTab(title) + "\t");
         sb.append(date + "\t");
-        sb.append(killTab(arg1) + ", " + killTab(relation) + ", " + killTab(arg2) + ", " + confidence + "\t");
-        sb.append(killTab(sentence) + "\t");
         sb.append(category + "\t");
         sb.append(url + "\t");
         sb.append(id + "\n");
         return sb.toString();
     }
     
+    /*
+     * get rid of \t in a string
+     */
     private String killTab(String s){
         return s.replace("\t", " ");
     }

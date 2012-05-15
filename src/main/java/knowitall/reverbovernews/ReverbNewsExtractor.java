@@ -16,7 +16,9 @@ import java.util.Scanner;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import edu.washington.cs.knowitall.extractor.R2A2;
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor;
+import edu.washington.cs.knowitall.extractor.ReVerbRelationExtractor;
 import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker;
 import edu.washington.cs.knowitall.nlp.extraction.ChunkedBinaryExtraction;
 import edu.washington.cs.knowitall.util.DefaultObjects;
@@ -34,6 +36,7 @@ public class ReverbNewsExtractor {
     private Calendar calendar;
     private ErrorMessagePrinter emp;
     private ReVerbExtractor reverb;
+//    private ReVerbRelationExtractor reverb;
     private Map<Long, ExtractedNewsData> data;
     private OpenNlpSentenceChunker chuncker;
     //this will be true when user are not extracting data for today's data
@@ -50,6 +53,7 @@ public class ReverbNewsExtractor {
         this.configFileName = configFileName;
         ignoreDate = false;
         reverb = new ReVerbExtractor();
+//        reverb = new R2A2();
         data = new HashMap<Long, ExtractedNewsData>();
         try {
             chuncker = new OpenNlpSentenceChunker();
@@ -83,15 +87,18 @@ public class ReverbNewsExtractor {
         String[] dataFiles = dataFolder.list();
         for(String fileName : dataFiles){
             extractData(loadData(location + fileName));
+            
+            //start outputting data
+            if(targetDir == null){
+            	outputData(rootDir + "/" + extractedDataDir + "/");
+            }else{
+            	ignoreDate = true;
+            	dateString = fileName.substring(0, 10);
+            	if(!targetDir.endsWith("/")) targetDir += "/";
+            	outputData(targetDir);
+            }
         }
         
-        if(targetDir == null){
-            outputData(rootDir + "/" + extractedDataDir + "/");
-        }else{
-            ignoreDate = true;
-            if(!targetDir.endsWith("/")) location += "/";
-            outputData(targetDir);
-        }
         
         System.out.println("extraction finished");
     }
@@ -128,7 +135,7 @@ public class ReverbNewsExtractor {
         if(!targetDir.endsWith("/")) targetDir += "/";
         targetFolder.mkdirs();
         if (!targetFolder.exists()) emp.printLineMsg("" + this, "can't create folder");
-        String jsonDataDir = targetDir + (ignoreDate ? "" : dateString) + "_ExtractedData." + extractedDataSuffix;
+        String jsonDataDir = targetDir + dateString + "_ExtractedData." + extractedDataSuffix;
 //        String readableDataDir = targetDir + dateString + "_readable.txt";
         System.out.println("storing in " + jsonDataDir);
         File jsonDataFile = new File(jsonDataDir);

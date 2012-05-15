@@ -20,6 +20,7 @@ public class NewsData{
     public String subCategory;
     public String url;
     public String source;
+    public String imgUrl;
     
     public NewsData(String category, String subCategory, String title, String date){
         imgAlt = "";
@@ -27,6 +28,7 @@ public class NewsData{
         imgTitle = "";
         url = "";
         source = "";
+        imgUrl = "";
         this.category = category;
         this.subCategory = subCategory;
         this.title = title;

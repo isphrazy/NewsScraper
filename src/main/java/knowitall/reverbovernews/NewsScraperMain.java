@@ -21,13 +21,14 @@ public class NewsScraperMain {
     
     private static final String YAHOO_CONFIG_FILE = "YahooRssConfig";
     
-    private static final String FETCH_DATA_ONLY = "f";
-    private static final String FETCH_DATA_AND_PROCESS_DATA = "fp";
+    private static final String SCRAPE_DATA_ONLY = "s";
+    private static final String SCRAPE_DATA_AND_PROCESS_DATA = "sp";
     private static final String PROCESS_RSS_WITH_GIVEN_DIR = "p";
     private static final String USE_REVERB = "r";
     private static final String USE_REVERB_WITH_DIR = "rd";
-    private static final String FORMAT_OPT = "format";
+    private static final String FORMAT_OPT = "fmt";
     private static final String FORMAT_DIR = "fd";
+    private static final String FORMAT_TODAY = "ftoday";
     private static final String FORMAT_TIME_FILTER = "ft";
     private static final String FORMAT_CONFIDENCE_THRESHOLD = "fct";
     private static final String FORMAT_CATEGORY_FILTER = "fc";
@@ -38,40 +39,47 @@ public class NewsScraperMain {
     
     public static void main( String[] args ) throws IOException{
         initiateVars();
+    
+        CommandLine cmd = getCommands(args, options);
+
+        validateOptionNumbers(cmd);
         
-        try{
-            CommandLine cmd = getCommands(args, options);
-            validateOptionNumbers(cmd);
-            
-            fetchNews(cmd);
+        fetchNews(cmd);
 
-            extractNews(cmd);
+        extractNews(cmd);
 
-            formatData(cmd);
-           
-            help(cmd);
+        formatData(cmd);
+       
+        help(cmd);
 
-        }catch (Exception excp){
-            printUsage();
-        }
     }
     
+    /*
+     * print the help option
+     */
     private static void help(CommandLine cmd) {
         if(cmd.hasOption(HELP)){
             printUsage();
         }
     }
 
+    /*
+     * initiate variables for this object
+     */
     private static void initiateVars() {
         calendar = Calendar.getInstance();
         options = new Options();
     }
 
+    /*
+     * format the stored data
+     */
     private static void formatData(CommandLine cmd) {
         if(cmd.hasOption(FORMAT_OPT)){
             String[] dir = null;
             String[] timeInterval = null;
             double confidenceThreshold = -1;
+            boolean formatToday = false;
             String category = null;
             
             if(cmd.hasOption(FORMAT_DIR)){
@@ -81,7 +89,11 @@ public class NewsScraperMain {
                 }
             }
             
-            if(cmd.hasOption(FORMAT_TIME_FILTER)){
+            if(cmd.hasOption(FORMAT_TODAY)){
+                if(cmd.hasOption(FORMAT_TIME_FILTER)) printUsage();
+                formatToday = true;
+                
+            }else if(cmd.hasOption(FORMAT_TIME_FILTER)){
                 timeInterval = cmd.getOptionValues(FORMAT_TIME_FILTER);
                 if(timeInterval.length != 2 || 
                     timeInterval[0] == null || timeInterval[1] == null){
@@ -99,11 +111,14 @@ public class NewsScraperMain {
             }
             
             ExtractedDataFormater formater = new ExtractedDataFormater(calendar, YAHOO_CONFIG_FILE);
-            formater.format(dir, timeInterval, confidenceThreshold, category);
+            formater.format(dir, timeInterval, confidenceThreshold, category, formatToday);
             
         }
     }
 
+    /*
+     * extract the news
+     */
     private static void extractNews(CommandLine cmd) {
         if(cmd.hasOption(USE_REVERB)){
             reverbExtract(null);
@@ -113,11 +128,14 @@ public class NewsScraperMain {
         }
     }
 
+    /*
+     * fetch the news online
+     */
     private static void fetchNews(CommandLine cmd) {
         try {
-            if (cmd.hasOption(FETCH_DATA_ONLY)){//only fetch data from internet, not process the raw data
-                    fetchYahooRSS(true, false, null);
-            }else if(cmd.hasOption(FETCH_DATA_AND_PROCESS_DATA)){
+            if (cmd.hasOption(SCRAPE_DATA_ONLY)){//only fetch data from internet, not process the raw data
+                fetchYahooRSS(true, false, null);
+            }else if(cmd.hasOption(SCRAPE_DATA_AND_PROCESS_DATA)){
                 fetchYahooRSS(true, true, null);
             }else if(cmd.hasOption(PROCESS_RSS_WITH_GIVEN_DIR)){
                 fetchYahooRSS(false, true, cmd.getOptionValues(PROCESS_RSS_WITH_GIVEN_DIR));
@@ -127,6 +145,9 @@ public class NewsScraperMain {
         }
     }
 
+    /*
+     * validate the number of options passed in args
+     */
     private static void validateOptionNumbers(CommandLine cmd) {
         if (cmd.getOptions().length == 0)
             printUsage();        
@@ -169,7 +190,6 @@ public class NewsScraperMain {
         }else{
             printUsage();
         }
-        
     }
 
     /*
@@ -177,10 +197,10 @@ public class NewsScraperMain {
      */
     private static CommandLine getCommands(String[] args, Options options) {
         
-        Option fetchDataOnlyOp = new Option(FETCH_DATA_ONLY, false, 
+        Option fetchDataOnlyOp = new Option(SCRAPE_DATA_ONLY, false, 
                 "fetch the rss(without processing it)");
 
-        Option fecthDataAndProcessData = new Option(FETCH_DATA_AND_PROCESS_DATA, false, 
+        Option fecthDataAndProcessData = new Option(SCRAPE_DATA_AND_PROCESS_DATA, false, 
                 "fetch rss, then process it");
         
         Option processWithDirOp = new Option(PROCESS_RSS_WITH_GIVEN_DIR, false, 
@@ -196,23 +216,30 @@ public class NewsScraperMain {
         
         Option formaterOp = new Option(FORMAT_OPT, false,
                 "format the reverb news database into human readable file.");
-        formaterOp.setArgs(2);
+        
+        Option formatTodayOp = new Option(FORMAT_TODAY, false,
+                "format the today's file; this can not be used with " + FORMAT_TIME_FILTER);
+//        formaterOp.setArgs(2);
         
         Option formatConfidenceThreshhold = new Option(FORMAT_CONFIDENCE_THRESHOLD, false, 
-                "specify a the minimum confidence requirement, if not specified then a" +
+                "this option can not be used without " + FORMAT_OPT + " is being used. " +
+                "This specify a the minimum confidence requirement, if not specified then a" +
                 "a certain number of extraction will be selected");
         formatConfidenceThreshhold.setArgs(1);
         
         Option formatCategoryFilter = new Option(FORMAT_CATEGORY_FILTER, false, 
+                "this option can not be used without " + FORMAT_OPT + " is being used. " +
                 "specify the category nane; if not specified, all categories will be spcified");
         formatCategoryFilter.setArgs(1);
         
         Option formatTimeFilter = new Option(FORMAT_TIME_FILTER, false, 
+                "this option can not be used without " + FORMAT_OPT + " is being used. " +
                 "specify the time interval, the files that falls into this interval " +
                 "will be formated(for eg: 2012-05-01 2012-05-04); if not specified, then the default one will be formated");
         formatTimeFilter.setArgs(2);
         
         Option formatDir = new Option(FORMAT_DIR, false, 
+                "this option can not be used without " + FORMAT_OPT + " is being used. " +
                 "specify the directory of source files and target file, " +
                 "if the it's not secified, then use the default one");
         formatDir.setArgs(2);
@@ -226,6 +253,7 @@ public class NewsScraperMain {
         options.addOption(useReverbOp);
         options.addOption(useReverbWithDirOp);
         options.addOption(formaterOp);
+        options.addOption(formatTodayOp);
         options.addOption(formatConfidenceThreshhold);
         options.addOption(formatCategoryFilter);
         options.addOption(formatTimeFilter);

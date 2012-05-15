@@ -15,11 +15,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -48,7 +50,14 @@ public class ExtractedDataFormater {
     private String category;
     private double confidenceThreshold;
     private List<FormattedNewsData> data;
+    private boolean allTime = false;
+    private Set<String> duplicateChecker;
     
+    /**
+     * 
+     * @param calendar
+     * @param configFileLocation
+     */
     public ExtractedDataFormater(Calendar calendar, String configFileLocation){
         
         startDate = null;
@@ -56,12 +65,25 @@ public class ExtractedDataFormater {
         extractedDataSuffix = null;
         extractedDataDir = null;
         data = new ArrayList<FormattedNewsData>();
-        
+        this.calendar = calendar;
+        duplicateChecker = new HashSet<String>();
         loadConfig(configFileLocation);
     }
 
+    
+    /**
+     * 
+     * @param dir source and target directory; if it's null, then the default one will
+     * be used.
+     * @param timeInterval specify the interval of the time, the data fall into 
+     * this date will be processed
+     * @param confidenceThreshold specify the minimum confidence level; If not
+     * specified, all the data will be considered.
+     * @param category specify the certain category will be specified. 
+     * If not specified, then all the category will be considered
+     */
     public void format(String[] dir, String[] timeInterval,
-            double confidenceThreshold, String category) {
+            double confidenceThreshold, String category, boolean formatToday) {
         
         if(dir != null){
             if(dir[0] == null || dir[1] == null)
@@ -69,6 +91,7 @@ public class ExtractedDataFormater {
             else{
                 srcDir = dir[0];
                 targetDir = dir[1];
+                rootDir = "";
                 if(!targetDir.endsWith("/"))
                     targetDir += "/";
                 
@@ -78,7 +101,11 @@ public class ExtractedDataFormater {
             }
         }
         
-        if(timeInterval != null){
+        if(formatToday){
+            if(timeInterval != null) throw new IllegalArgumentException("either formtToday is true" +
+            		" or timeInterval is null");
+//            startDate = endDate = new Date()
+        }else if(timeInterval != null){
             if(timeInterval[0] == null || timeInterval[1] == null)
                 throw new IllegalArgumentException("Illegal arguments: timeInterval");
             else{
@@ -90,6 +117,8 @@ public class ExtractedDataFormater {
                     excp.printStackTrace();
                 }
             }
+        }else{
+            allTime = true;
         }
         
         this.confidenceThreshold = confidenceThreshold;
@@ -98,29 +127,56 @@ public class ExtractedDataFormater {
         startFormatting();
     }
     
+    /*
+     * start formatting the data
+     */
     private void startFormatting() {
         try {
             File srcFolder = new File(srcDir);
+            if(!srcDir.endsWith("/")) srcDir += "/";
             String[] files = srcFolder.list();
             for(String file : files){
+                //get the time of the file(parse the time in the file's name)
                 String time = getFileTime(file);
-                Date thisDate = dateFormat.parse(time);
-                if(startDate == null || (!thisDate.after(endDate) && !thisDate.before(startDate))){
+                
+                if(allTime)
                     formatFile(srcDir, file);
+                else{
+                    Date thisDate = dateFormat.parse(time);
+                    if(!thisDate.after(endDate) && !thisDate.before(startDate))
+                        formatFile(srcDir, file);
                 }
+                
             }
         } catch (ParseException excp) {
             excp.printStackTrace();
         }
         
         sortData();
+        data = data.subList(0, MAX_OUTPUT_DATA);
+//        shuffleData();
         
         outputData();
     }
 
+
+
+    /*
+     * output the data to disk
+     */
     private void outputData() {
         try {
-            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(targetDir + "top_500.txt"),ENCODE));
+            String outputFolderDir = rootDir + targetDir;
+            File outputLoc = new File(outputFolderDir);
+            outputLoc.mkdirs();
+            
+            String outputFileName = outputFolderDir + "top_500.txt";
+            
+            File outputFile = new File(outputFileName);
+            if(!outputFile.exists())
+                outputFile.createNewFile();
+            
+            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile),ENCODE));
             StringBuilder sb = new StringBuilder();
             int length = Math.min(MAX_OUTPUT_DATA, data.size());
             for(int i = 0; i < length; i++){
@@ -129,27 +185,37 @@ public class ExtractedDataFormater {
             out.write(sb.toString());
             out.close();
         } catch (UnsupportedEncodingException excp) {
-            // TODO Auto-generated catch block
             excp.printStackTrace();
         } catch (FileNotFoundException excp) {
-            // TODO Auto-generated catch block
             excp.printStackTrace();
         } catch (IOException excp) {
-            // TODO Auto-generated catch block
             excp.printStackTrace();
         }
     }
 
+    /*
+     * sort the stored data
+     */
     private void sortData() {
         Collections.sort(data, new FormattedNewsDataComparator());
     }
+    
+    /*
+     * shuffle the stored data
+     */
+    private void shuffleData() {
+        Collections.shuffle(data);
+    }
 
+    /*
+     * get the time in the file name
+     */
     private String getFileTime(String fileName) {
         return fileName.substring(0, dateFormatStr.length());
     }
 
     /*
-     * 
+     * convert data from 
      */
     private void formatFile(String dir, String fileName) {
         File file = new File(dir + fileName);
@@ -157,15 +223,21 @@ public class ExtractedDataFormater {
         try {
             JSONObject jFile = new JSONObject(fileContent);
             String[] keys = JSONObject.getNames(jFile);
-            for(String key : keys){
+            for(String key : keys){//each news
                 JSONObject value = (JSONObject) jFile.get(key);
                 JSONArray extractions = value.getJSONArray("extractions");
+                String title = value.getString("title").trim();
+                if(duplicateChecker.contains(title))
+                    break;
+                duplicateChecker.add(title);
+                long id = Long.parseLong(key);
+                //each extraction for the news
                 for(int i = 0; i < extractions.length(); i++){
                     JSONObject extraction = (JSONObject) extractions.get(i);
 //                    if(extraction.get("confidence"))
                     FormattedNewsData currentNewsData = new FormattedNewsData();
-                    currentNewsData.id = Long.parseLong(key);
-                    currentNewsData.title = value.getString("title");
+                    currentNewsData.id = id;
+                    currentNewsData.title = title;
                     currentNewsData.url = value.getString("url");
                     currentNewsData.date = value.getString("date");
                     currentNewsData.category = value.getString("category");
@@ -173,24 +245,15 @@ public class ExtractedDataFormater {
                     currentNewsData.arg2 = extraction.getString("arg2");
                     currentNewsData.relation = extraction.getString("relation");
                     currentNewsData.sentence = extraction.getString("sent");
-                    currentNewsData.confidence = extraction.getLong("confidence");
+                    currentNewsData.confidence = extraction.getDouble("confidence");
                     data.add(currentNewsData);
                 }
                 
                 
             }
         } catch (JSONException excp) {
-            // TODO Auto-generated catch block
             excp.printStackTrace();
         }
-//        Gson gson = new Gson();
-//        HashMap<Long, ExtractedNewsData> map = gson.fromJson(fileContent, new TypeToken<HashMap<Long, ExtractedNewsData>>(){}.getType());
-//        Iterator<Entry<Long, ExtractedNewsData>> it = map.entrySet().iterator();
-//        while(it.hasNext()){
-//            Map.Entry<Long, ExtractedNewsData> pairs = (Map.Entry<Long, ExtractedNewsData>)it.next();
-//            ExtractedNewsData currentData = (ExtractedNewsData) pairs.getValue();
-//            if(currentData.)
-//        }
     }
 
     /*
@@ -234,7 +297,7 @@ public class ExtractedDataFormater {
     private class FormattedNewsDataComparator implements Comparator<FormattedNewsData> {
         
         public int compare(FormattedNewsData o1, FormattedNewsData o2) {
-            double result = o1.confidence - o2.confidence;
+            double result = o2.confidence - o1.confidence;
             if(result < 0) return -1;
             if(result > 0) return 1;
             return 0;
