@@ -76,6 +76,7 @@ public class NewsScraperMain {
      */
     private static void formatData(CommandLine cmd) {
         if(cmd.hasOption(FORMAT_OPT)){
+            
             String[] dir = null;
             String[] timeInterval = null;
             double confidenceThreshold = -1;
@@ -88,11 +89,11 @@ public class NewsScraperMain {
                     printUsage();
                 }
             }
-            
+           
             if(cmd.hasOption(FORMAT_TODAY)){
                 if(cmd.hasOption(FORMAT_TIME_FILTER)) printUsage();
                 formatToday = true;
-                
+            
             }else if(cmd.hasOption(FORMAT_TIME_FILTER)){
                 timeInterval = cmd.getOptionValues(FORMAT_TIME_FILTER);
                 if(timeInterval.length != 2 || 
@@ -100,7 +101,7 @@ public class NewsScraperMain {
                     printUsage();
                 }
             }
-            
+           
             if(cmd.hasOption(FORMAT_CONFIDENCE_THRESHOLD)){
                 confidenceThreshold = Double.parseDouble(cmd.getOptionValue(FORMAT_CONFIDENCE_THRESHOLD, "-1"));
             }

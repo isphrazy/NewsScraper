@@ -97,6 +97,7 @@ public class ReverbNewsExtractor {
             	if(!targetDir.endsWith("/")) targetDir += "/";
             	outputData(targetDir);
             }
+            data.clear();
         }
         
         

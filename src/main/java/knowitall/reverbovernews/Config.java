@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -47,7 +48,7 @@ public class Config {
         extractedDataSuffix = config.get(JSON_EXTRACTED_DATA_SUFFIX).getAsString();
         extractedDataDir = config.get(JSON_EXTRACTED_DIR).getAsString();
         formattedExtractedDataDir = config.get(JSON_FORMATTED_EXTRACTED_DATA).getAsString();
-        
+        categoryList = new ArrayList<String>();
         generateCategoryList();
     }
     

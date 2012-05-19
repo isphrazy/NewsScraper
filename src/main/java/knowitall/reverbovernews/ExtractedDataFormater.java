@@ -78,7 +78,7 @@ public class ExtractedDataFormater {
      * @param timeInterval specify the interval of the time, the data fall into 
      * this date will be processed
      * @param confidenceThreshold specify the minimum confidence level; If not
-     * specified, all the data will be considered.
+     * specified(-1), all the data will be considered.
      * @param category specify the certain category will be specified. 
      * If not specified, then all the category will be considered
      */
@@ -152,9 +152,9 @@ public class ExtractedDataFormater {
             excp.printStackTrace();
         }
         
-        sortData();
-        data = data.subList(0, MAX_OUTPUT_DATA);
-//        shuffleData();
+//        sortData();
+//        data = data.subList(0, MAX_OUTPUT_DATA);
+        shuffleData();
         
         outputData();
     }
@@ -178,7 +178,8 @@ public class ExtractedDataFormater {
             
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile),ENCODE));
             StringBuilder sb = new StringBuilder();
-            int length = Math.min(MAX_OUTPUT_DATA, data.size());
+//            int length = Math.min(MAX_OUTPUT_DATA, data.size());
+            int length = data.size();
             for(int i = 0; i < length; i++){
                 sb.append(data.get(i).toString());
             }
@@ -236,17 +237,19 @@ public class ExtractedDataFormater {
                     JSONObject extraction = (JSONObject) extractions.get(i);
 //                    if(extraction.get("confidence"))
                     FormattedNewsData currentNewsData = new FormattedNewsData();
-                    currentNewsData.id = id;
-                    currentNewsData.title = title;
-                    currentNewsData.url = value.getString("url");
-                    currentNewsData.date = value.getString("date");
-                    currentNewsData.category = value.getString("category");
-                    currentNewsData.arg1 = extraction.getString("arg1");
-                    currentNewsData.arg2 = extraction.getString("arg2");
-                    currentNewsData.relation = extraction.getString("relation");
-                    currentNewsData.sentence = extraction.getString("sent");
                     currentNewsData.confidence = extraction.getDouble("confidence");
-                    data.add(currentNewsData);
+                    if(confidenceThreshold == -1 || currentNewsData.confidence > confidenceThreshold){
+                        currentNewsData.id = id;
+                        currentNewsData.title = title;
+                        currentNewsData.url = value.getString("url");
+                        currentNewsData.date = value.getString("date");
+                        currentNewsData.category = value.getString("category");
+                        currentNewsData.arg1 = extraction.getString("arg1");
+                        currentNewsData.arg2 = extraction.getString("arg2");
+                        currentNewsData.relation = extraction.getString("relation");
+                        currentNewsData.sentence = extraction.getString("sent");
+                        data.add(currentNewsData);
+                    }
                 }
                 
                 

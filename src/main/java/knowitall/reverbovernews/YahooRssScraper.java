@@ -89,6 +89,9 @@ public class YahooRssScraper {
      */
     public void scrape(boolean fetchData, boolean processData, String sourceDir, String targetDir){
         
+        if(sourceDir != null && targetDir != null)
+            ignoreDate = true;
+        
         loadConfig();
 
         if(fetchData)
@@ -104,7 +107,6 @@ public class YahooRssScraper {
                 locationFile.mkdirs();
                 if(!locationFile.exists())
                     emp.printLineMsg("" + this, "failed to create target folder");
-                ignoreDate = true;
                 
                 processHtml(sourceDir);
             }else{
@@ -197,14 +199,14 @@ public class YahooRssScraper {
         File rawDataFile = new File(dir);
         String[] files = rawDataFile.list();
         
-        if(ignoreDate){
+        if(ignoreDate && files.length > 0){
             String fileDate = getFileDate(files[0]);
             if(fileDate != null)
                 dateString = fileDate;
         }
         
         for(String fileName : files){
-            
+            System.out.print("process " + fileName);
             int timeSeperatorPos = fileName.indexOf('_');
             int catSeperatorPos = fileName.indexOf('_', timeSeperatorPos + 1);
             String categoryName = fileName.substring(timeSeperatorPos + 1, catSeperatorPos);
@@ -294,10 +296,11 @@ public class YahooRssScraper {
                         }
                     }
                 }catch (Exception e){
+                    e.printStackTrace();
                     emp.printLineMsg("" + this + ": " + categoryName + " " + rssName, e.getMessage());
                 }
             }
-            System.out.println("process " + fileName + " successfully");
+            System.out.println(" successfully");
         }
         System.out.println("end processing html");
     }
@@ -460,9 +463,11 @@ public class YahooRssScraper {
         //load date format
 //        DateFormat dateFormat = new SimpleDateFormat(configJO.get(JSON_DATE_FORMAT).getAsString());
         dateString = config.getDateFormat().format(calendar.getTime());
+        emp = ErrorMessagePrinter.getInstance(config.getRootDir(), calendar);
         
         //if data folder not exist, create one
-        makeTodayDirectory(config.getRootDir());
+        if(!ignoreDate)
+            makeTodayDirectory(config.getRootDir());
         
         //get base url
         baseURL = configJO.get(JSON_BASE_URL).getAsString();
@@ -484,17 +489,18 @@ public class YahooRssScraper {
         sentenceMinimumLengthRequirement = configJO.get(JSON_SENTENCE_MINIMUM_LENGTH_REQUIREMENT).getAsInt();
         rawDataDir = outputLocation + "raw_data/";
         
+        
     }
 
     /*
      * create directory for today's data
      */
     private void makeTodayDirectory(String dataFolderLoction) {
+        
         File folder = new File(dataFolderLoction);
         if(!folder.exists())
             folder.mkdir();
-        emp = ErrorMessagePrinter.getInstance(dataFolderLoction, calendar);
-        
+                
         //if today's folder not exist, create one
         outputLocation = dataFolderLoction + dateString + "/";
         File todayFolder = new File(outputLocation);
@@ -502,6 +508,7 @@ public class YahooRssScraper {
         
         //if the folder is not created
         if(!todayFolder.exists()){
+            
             emp.printLineMsg("" + this, "can't crate today's directory");
             System.exit(1);
         }
