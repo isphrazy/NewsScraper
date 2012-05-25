@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -50,9 +51,10 @@ public class ExtractedDataFormater {
     private String category;
     private double confidenceThreshold;
     private List<FormattedNewsData> data;
-    private boolean allTime = false;
+    private boolean allTime;
     private Set<String> duplicateChecker;
-    
+    private int totalCount = 0;
+    private double totalConf = 0;
     /**
      * 
      * @param calendar
@@ -64,6 +66,7 @@ public class ExtractedDataFormater {
         endDate = null;
         extractedDataSuffix = null;
         extractedDataDir = null;
+        allTime = false;
         data = new ArrayList<FormattedNewsData>();
         this.calendar = calendar;
         duplicateChecker = new HashSet<String>();
@@ -123,8 +126,12 @@ public class ExtractedDataFormater {
         
         this.confidenceThreshold = confidenceThreshold;
         this.category = category;
-        
+//        for(this.confidenceThreshold = 0.95; this.confidenceThreshold > 0; this.confidenceThreshold -= 0.05){
         startFormatting();
+//            totalCount = 0;
+//            totalConf = 0;
+//            duplicateChecker.clear();
+//        }
     }
     
     /*
@@ -155,7 +162,10 @@ public class ExtractedDataFormater {
 //        sortData();
 //        data = data.subList(0, MAX_OUTPUT_DATA);
         shuffleData();
+//        System.out.println(this.confidenceThreshold + "\t" + totalCount + "\t" + totalConf / totalCount);
+//        System.out.println("average conf: " + totalConf / totalCount);
         
+//        
         outputData();
     }
 
@@ -205,7 +215,8 @@ public class ExtractedDataFormater {
      * shuffle the stored data
      */
     private void shuffleData() {
-        Collections.shuffle(data);
+//        Collections.shuffle(data);
+        Collections.shuffle(data, new Random());
     }
 
     /*
@@ -229,7 +240,7 @@ public class ExtractedDataFormater {
                 JSONArray extractions = value.getJSONArray("extractions");
                 String title = value.getString("title").trim();
                 if(duplicateChecker.contains(title))
-                    break;
+                    continue;
                 duplicateChecker.add(title);
                 long id = Long.parseLong(key);
                 //each extraction for the news
@@ -249,6 +260,8 @@ public class ExtractedDataFormater {
                         currentNewsData.relation = extraction.getString("relation");
                         currentNewsData.sentence = extraction.getString("sent");
                         data.add(currentNewsData);
+                        totalCount++;
+                        totalConf += currentNewsData.confidence;
                     }
                 }
                 

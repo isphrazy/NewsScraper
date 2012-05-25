@@ -85,6 +85,10 @@ public class ReverbNewsExtractor {
         System.out.println("location: " + location);
         File dataFolder = new File(location);
         String[] dataFiles = dataFolder.list();
+        if(dataFiles == null){
+            emp.printLineMsg("" + this, "can't load: " + location);
+            return;
+        }
         for(String fileName : dataFiles){
             extractData(loadData(location + fileName));
             

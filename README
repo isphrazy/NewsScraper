@@ -1,16 +1,41 @@
 quick use:
 
 usage: options:
- -f          fetch the rss(without processing it)
- -fp         fetch rss, then process it
- -h          print program usage
- -p <arg>    process rss only, the first arg is the source directory, the
-             second dir is the target direcotory to save data
- -r          use reverb to extract today's file
- -rd <arg>   use reverb to extract files in the first arg and save it into
-             second arg
+ -fc <arg>    this option can not be used without fmt is being used.
+              specify the category nane; if not specified, all categories
+              will be spcified
+ -fct <arg>   this option can not be used without fmt is being used. This
+              specify a the minimum confidence requirement, if not
+              specified then aa certain number of extraction will be
+              selected
+ -fd <arg>    this option can not be used without fmt is being used.
+              specify the directory of source files and target file, if
+              the it's not secified, then use the default one
+ -fmt         format the reverb news database into human readable file.
+ -ft <arg>    this option can not be used without fmt is being used.
+              specify the time interval, the files that falls into this
+              interval will be formated(for eg: 2012-05-01 2012-05-04); if
+              not specified, then the default one will be formated
+ -ftoday      format the today's file; this can not be used with ft
+ -h           print program usage
+ -p <arg>     process rss only, the first arg is the source directory, the
+              second dir is the target direcotory to save data
+ -r           use reverb to extract today's file
+ -rd <arg>    use reverb to extract files in the first arg and save it
+              into second arg
+ -s           fetch the rss(without processing it)
+ -sp          fetch rss, then process it
+
 
 YahooRssConfig file contains the configruation info about parsing the Yahoo RSS.
+
+Statistics Category:
+a: perfect news, eg: Singer Nicki Minaj	performs a free concert at	Times Square.
+b: existing general knowledge, eg: Obama is the president of United States.
+c: one of the two arguments is not infromative, eg: This application is known for proper handling of global communication
+d: both arguments are not informative, eg: He likes his idea.
+e: extraction is fine, but meaningless, eg: A photo is still a photo
+f: extraction has different meaning from the original sentence, eg:thw world's largest listed oil firm was the product of nearly a year of talks
 
 Leading publisher info(eg: "(Reuters) -" ) is throwed
 if the content ends with "./!/? ...", then "..." is throwed
