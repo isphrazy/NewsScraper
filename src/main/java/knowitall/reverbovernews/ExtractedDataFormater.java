@@ -55,6 +55,7 @@ public class ExtractedDataFormater {
     private Set<String> duplicateChecker;
     private int totalCount = 0;
     private double totalConf = 0;
+    
     /**
      * 
      * @param calendar

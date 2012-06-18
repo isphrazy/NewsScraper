@@ -7,11 +7,16 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
@@ -64,6 +69,7 @@ public class YahooRssScraper {
     private int sentenceMinimumLengthRequirement;
     private Set<String> duplicateChecker;
     private boolean ignoreDate;
+    private DateFormat dateFormat;
     
     /**
      * constructor
@@ -85,7 +91,8 @@ public class YahooRssScraper {
      * @param fetchData indicates whether use wants to fetch data online
      * @param processData if this is true, the data fetched online will be processed and stored
      * to database, otherwise only the fetched data will be saved
-     * @param sourceDir tells where the html will be scraped is stored; if it's null, use today's directory
+     * @param sourceDir tells where the html that will be scraped is stored; if it's null, use today's directory
+     * @targetDir where the processed data will be stored
      */
     public void scrape(boolean fetchData, boolean processData, String sourceDir, String targetDir){
         
@@ -161,6 +168,8 @@ public class YahooRssScraper {
             
             sb.append("}");
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(rssData)),ENCODE));
+            if(sb.length() < 100)
+                emp.printLineMsg("" + this, "output data is too short");
             out.write(sb.toString());
             out.close();
             
@@ -223,7 +232,7 @@ public class YahooRssScraper {
             for(Element item : items){
                 try{
                     String pubdate = item.getElementsByTag("pubdate").first().text();
-                    if(pubdate.substring(0, 10).equals(dateString) || ignoreDate){
+                    if(checkDateMatch(pubdate) || ignoreDate){
                         
                         //get news' title
                         Element titleEle = item.getElementsByTag("title").first();
@@ -305,6 +314,36 @@ public class YahooRssScraper {
         System.out.println("end processing html");
     }
 
+    /*
+     * check if the given date is the same as dateString
+     */
+    private boolean checkDateMatch(String pubdate) {
+        if(pubdate.substring(0, 10).equals(dateString)){
+            return true;
+        }
+        DateFormat formatter = new SimpleDateFormat("");
+        try {
+            Date d = dateFormat.parse(dateString);
+            int dayPos = pubdate.indexOf(' ');
+            int monthPos = pubdate.indexOf(' ', dayPos + 1);
+            int yearPos = pubdate.indexOf(' ', monthPos + 1);
+            int endPos = pubdate.indexOf(' ', yearPos + 1);
+            Calendar c = Calendar.getInstance();
+            c.setTime(d);
+            DateFormat monthFormat = new SimpleDateFormat("MMM", Locale.ENGLISH);
+            Date dm = monthFormat.parse(pubdate.substring(monthPos + 1, yearPos));
+            if(c.get(c.DAY_OF_MONTH) == Integer.parseInt(pubdate.substring(dayPos + 1, monthPos))
+                    &&c.get(c.MONTH) == dm.getMonth()
+                    &&c.get(c.YEAR) == Integer.parseInt(pubdate.substring(yearPos + 1, endPos))){
+                return true;
+            }
+        } catch (ParseException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
 
     private String getFileDate(String fileName) {
         try{
@@ -462,7 +501,8 @@ public class YahooRssScraper {
 
         //load date format
 //        DateFormat dateFormat = new SimpleDateFormat(configJO.get(JSON_DATE_FORMAT).getAsString());
-        dateString = config.getDateFormat().format(calendar.getTime());
+        dateFormat = config.getDateFormat();
+        dateString = dateFormat.format(calendar.getTime());
         emp = ErrorMessagePrinter.getInstance(config.getRootDir(), calendar);
         
         //if data folder not exist, create one
